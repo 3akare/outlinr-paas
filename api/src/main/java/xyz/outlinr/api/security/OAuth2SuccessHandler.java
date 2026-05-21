@@ -5,10 +5,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 import xyz.outlinr.api.entity.RefreshToken;
 import xyz.outlinr.api.entity.User;
@@ -17,7 +19,6 @@ import xyz.outlinr.api.repository.UserRepository;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.Objects;
 import java.util.UUID;
 
 @Component
@@ -27,10 +28,15 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
 
+    @Value("${outlinr.client.url:http://localhost:5173}")
+    private String clientUrl;
+
+    @Transactional
     public void onAuthenticationSuccess(@NonNull HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         assert oAuth2User != null;
-        String githubId = String.valueOf(Objects.requireNonNull(oAuth2User.getAttribute("id")));
+        Integer id = oAuth2User.getAttribute("id");
+        String githubId = (id != null) ? String.valueOf(id) : null;
         String name = oAuth2User.getAttribute("name");
         String email = oAuth2User.getAttribute("email");
         String avatarUrl = oAuth2User.getAttribute("avatar_url");
@@ -45,20 +51,20 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                     .build()
                 ));
         String accessToken = jwtProvider.generateAccessToken(user.getId().toString());
-        refreshTokenRepository.deleteByUser(user);
         String refreshId = UUID.randomUUID().toString();
-        refreshTokenRepository.save(RefreshToken.builder()
-            .token(refreshId)
-            .user(user).expiryDate(Instant.now().plusSeconds(604800))
-            .build()
-        );
+        RefreshToken refreshToken = refreshTokenRepository.findByUser(user)
+            .orElseGet(() -> RefreshToken.builder().user(user).build());
+        refreshToken.setToken(refreshId);
+        refreshToken.setExpiryDate(Instant.now().plusSeconds(604800));
+        refreshTokenRepository.save(refreshToken);
         Cookie cookie = new Cookie("refresh_token", refreshId);
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
-        cookie.setPath("/api/auth/refresh_token");
+        cookie.setPath("/api/auth/refresh");
         cookie.setMaxAge(604800);
         response.addCookie(cookie);
-        String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/auth/callback")
+        String callbackUrl = clientUrl + "/auth/callback";
+        String targetUrl = UriComponentsBuilder.fromUriString(callbackUrl)
             .queryParam("access_token", accessToken)
             .build()
             .toUriString();

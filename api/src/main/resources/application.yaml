@@ -5,12 +5,11 @@ spring:
     import: "optional:file:.env[.properties]"
   datasource:
     url: jdbc:postgresql://localhost:5432/outlinr_db
-    username: root
-    password: password
-    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:password}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -26,3 +25,7 @@ spring:
             scope:
               - read:user
               - user:email
+
+outlinr:
+  client:
+    url: ${CLIENT_URL}
