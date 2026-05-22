@@ -25,7 +25,7 @@ public class SecurityConfig {
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @Value("${outlinr.client.url:http://localhost:5173}")
+    @Value("${outlinr.client.url}")
     private String clientUrl;
 
     @Bean

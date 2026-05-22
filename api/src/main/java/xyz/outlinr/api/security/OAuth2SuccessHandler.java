@@ -28,7 +28,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
 
-    @Value("${outlinr.client.url:http://localhost:5173}")
+    @Value("${outlinr.client.url}")
     private String clientUrl;
 
     @Transactional
