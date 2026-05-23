@@ -14,7 +14,8 @@ import java.time.Instant;
 @Entity
 @Builder
 @Table(name = "refresh_tokens")
-@AllArgsConstructor @NoArgsConstructor
+@AllArgsConstructor
+@NoArgsConstructor
 public class RefreshToken {
 
     @Id

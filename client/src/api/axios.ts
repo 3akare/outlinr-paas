@@ -54,12 +54,13 @@ api.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const response = await axios.post<{ accessToken: string }>(
+        const response = await axios.post<any>(
           `${apiUrl}/api/auth/refresh`,
           {},
           { withCredentials: true }
         )
-        const { accessToken } = response.data
+        const accessToken = response.data?.data?.accessToken || response.data?.accessToken
+        if (!accessToken) throw new Error("No token in refresh response")
 
         useAuthStore.getState().setAccessToken(accessToken)
         processQueue(null, accessToken)

@@ -32,5 +32,7 @@ build/
 ### VS Code ###
 .vscode/
 
-### Environment Variables ###
+### Environment Variables and Secrets ###
 .env
+/secrets
+.DS_Store

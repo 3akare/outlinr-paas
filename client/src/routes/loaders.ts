@@ -7,12 +7,14 @@ export const protectedLoader = async () => {
   if (token) return null
 
   try {
-    const response = await axios.post<{ accessToken: string }>(
+    const response = await axios.post<any>(
       `${import.meta.env.VITE_API_URL}/api/auth/refresh`,
       {},
       { withCredentials: true }
     )
-    useAuthStore.getState().setAccessToken(response.data.accessToken)
+    const token = response.data?.data?.accessToken || response.data?.accessToken
+    if (!token) throw new Error("Missing token")
+    useAuthStore.getState().setAccessToken(token)
     return null
   } catch {
     useAuthStore.getState().clearAuth()

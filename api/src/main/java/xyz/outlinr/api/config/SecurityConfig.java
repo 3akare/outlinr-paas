@@ -29,12 +29,13 @@ public class SecurityConfig {
     private String clientUrl;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
+                    "/api/github/installation/callback",
                     "/api/auth/refresh",
                     "/api/auth/logout",
                     "/login/**",

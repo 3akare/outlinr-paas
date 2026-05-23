@@ -21,6 +21,9 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
@@ -32,42 +35,51 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private String clientUrl;
 
     @Transactional
-    public void onAuthenticationSuccess(@NonNull HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
+    public void onAuthenticationSuccess(@NonNull HttpServletRequest request, HttpServletResponse response,
+            Authentication authentication) throws IOException {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         assert oAuth2User != null;
         Integer id = oAuth2User.getAttribute("id");
         String githubId = (id != null) ? String.valueOf(id) : null;
+        log.info("OAuth2 login success, processing attributes for GitHub ID: {}", githubId);
+        
         String name = oAuth2User.getAttribute("name");
         String email = oAuth2User.getAttribute("email");
         String avatarUrl = oAuth2User.getAttribute("avatar_url");
 
-        User user = userRepository.findByGithubId(githubId)
-            .orElseGet(() -> userRepository.save(
-                User.builder()
-                    .githubId(githubId)
-                    .name(name)
-                    .email(email)
-                    .avatarUrl(avatarUrl)
-                    .build()
-                ));
+        User user = userRepository.findByGithubId(githubId).orElseGet(() -> userRepository.save(
+            User.builder()
+                .githubId(githubId)
+                .name(name)
+                .email(email)
+                .avatarUrl(avatarUrl)
+                .build())
+        );
+
         String accessToken = jwtProvider.generateAccessToken(user.getId().toString());
         String refreshId = UUID.randomUUID().toString();
-        RefreshToken refreshToken = refreshTokenRepository.findByUser(user)
-            .orElseGet(() -> RefreshToken.builder().user(user).build());
+        RefreshToken refreshToken = refreshTokenRepository.findByUser(user).orElseGet(() -> RefreshToken.builder().user(user).build());
         refreshToken.setToken(refreshId);
         refreshToken.setExpiryDate(Instant.now().plusSeconds(604800));
         refreshTokenRepository.save(refreshToken);
+
         Cookie cookie = new Cookie("refresh_token", refreshId);
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
         cookie.setPath("/api/auth/refresh");
         cookie.setMaxAge(604800);
         response.addCookie(cookie);
+
         String callbackUrl = clientUrl + "/auth/callback";
         String targetUrl = UriComponentsBuilder.fromUriString(callbackUrl)
-            .queryParam("access_token", accessToken)
-            .build()
-            .toUriString();
+                .queryParam("access_token", accessToken)
+                .build()
+                .toUriString();
+        
+        log.info("Invalidating temporary OAuth session for stateless architecture (GitHub ID: {})", githubId);
+        request.getSession().invalidate();
+        
+        log.info("Redirecting authenticated user {} to client callback: {}", githubId, callbackUrl);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }

@@ -13,7 +13,8 @@ import java.time.Instant;
 @Entity
 @Builder
 @Table(name = "users")
-@AllArgsConstructor @NoArgsConstructor
+@AllArgsConstructor
+@NoArgsConstructor
 public class User{
 
     @Id
@@ -28,6 +29,9 @@ public class User{
     private String email;
 
     private String avatarUrl;
+
+    @Column(unique = true)
+    private String githubInstallationId;
 
     @CreationTimestamp
     @Column(updatable = false)
