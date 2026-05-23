@@ -4,9 +4,9 @@ spring:
   config:
     import: "optional:file:.env[.properties]"
   datasource:
-    url: jdbc:postgresql://localhost:5432/outlinr_db
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:password}
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: create
