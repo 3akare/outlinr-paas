@@ -2,7 +2,7 @@ import { useSetAccessToken } from "@/store/auth_store"
 import { useEffect } from "react"
 import { useSearchParams, useNavigate } from "react-router"
 
-export const OAuthCallback = () => {
+export default function OAuthCallback() {
   const [searchParams] = useSearchParams()
   const setAccessToken = useSetAccessToken()
   const navigate = useNavigate()

@@ -1,20 +1,8 @@
-import {
-  createBrowserRouter,
-  Navigate,
-  RouterProvider,
-} from "react-router"
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router"
 import { protectedLoader } from "./routes/loaders"
-import { OAuthCallback } from "./pages/OAuthCallback"
-import Dashboard from "./pages/Dashboard"
-
-const apiUrl = import.meta.env.VITE_API_URL
-
-const Login = () => (
-  <div>
-    <h2>Login Page</h2>
-    <a href={`${apiUrl}/oauth2/authorization/github`}>Login with GitHub</a>
-  </div>
-)
+import Login from "@/pages/login"
+import OAuthCallback from "@/pages/oauthcallback"
+import Dashboard from "@/pages/dashboard"
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -23,7 +11,11 @@ const router = createBrowserRouter([
     path: "/dashboard",
     element: <Dashboard />,
     loader: protectedLoader,
-    HydrateFallback: () => <div>Loading dashboard...</div>,
+    HydrateFallback: () => (
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f]">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400/40 border-t-emerald-400" />
+      </div>
+    ),
   },
   { path: "*", element: <Navigate to="/dashboard" replace /> },
 ])
