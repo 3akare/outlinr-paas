@@ -1,15 +1,20 @@
-import { createBrowserRouter, Navigate, RouterProvider, useNavigate } from "react-router"
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+  useNavigate,
+} from "react-router"
 import { protectedLoader } from "./routes/loaders"
 import { OAuthCallback } from "./pages/OAuthCallback"
 import { useClearAuth } from "@/store/auth_store"
 import { api } from "@/api/axios"
 
+const apiUrl = import.meta.env.VITE_API_URL
+
 const Login = () => (
   <div>
     <h2>Login Page</h2>
-    <a href="http://localhost:8080/oauth2/authorization/github">
-      Login with GitHub
-    </a>
+    <a href={`${apiUrl}/oauth2/authorization/github`}>Login with GitHub</a>
   </div>
 )
 
@@ -19,12 +24,10 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await api.post('/auth/logout')
-    } catch (e) {
-      // Ignore network errors
+      await api.post("/auth/logout")
     } finally {
       clearAuth()
-      navigate('/login', { replace: true })
+      navigate("/login", { replace: true })
     }
   }
 
