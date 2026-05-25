@@ -3,6 +3,10 @@ package xyz.outlinr.api.service.impl;
 
 import io.jsonwebtoken.Jwts;
 import io.micrometer.common.util.StringUtils;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.openssl.PEMKeyPair;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -11,11 +15,12 @@ import xyz.outlinr.api.repository.UserRepository;
 import xyz.outlinr.api.service.GithubAppService;
 
 import jakarta.annotation.PostConstruct;
+
+import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.KeyFactory;
+import java.security.KeyPair;
 import java.security.interfaces.RSAPrivateKey;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -133,15 +138,19 @@ public class IGithubAppService implements GithubAppService {
 
     private RSAPrivateKey loadPrivateKey() {
         try {
-            String pem = Files.readString(Path.of(githubAppPrivateKeyPath));
-            String cleaned = pem
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s+", "");
-            byte[] decoded = Base64.getDecoder().decode(cleaned);
-            PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decoded);
-            KeyFactory kf = KeyFactory.getInstance("RSA");
-            return (RSAPrivateKey) kf.generatePrivate(spec);
+            String pemContent = Files.readString(Path.of(githubAppPrivateKeyPath));
+            try (PEMParser pemParser = new PEMParser(new StringReader(pemContent))) {
+                Object object = pemParser.readObject();
+                JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
+
+                if (object instanceof PEMKeyPair pemKeyPair) {
+                    KeyPair kp = converter.getKeyPair(pemKeyPair);
+                    return (RSAPrivateKey) kp.getPrivate();
+                } else if (object instanceof PrivateKeyInfo privateKeyInfo) {
+                    return (RSAPrivateKey) converter.getPrivateKey(privateKeyInfo);
+                }
+                throw new IllegalArgumentException("Unknown key structure in PEM file");
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to load GitHub App private key", e);
         }
