@@ -218,8 +218,8 @@ export default function Dashboard() {
       </main>
 
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-60 -right-60 h-[500px] w-[500px] rounded-full bg-emerald-500/4 blur-3xl" />
-        <div className="absolute -bottom-60 -left-60 h-[500px] w-[500px] rounded-full bg-emerald-500/2 blur-3xl" />
+        <div className="absolute -top-60 -right-60 h-125 w-125 rounded-full bg-emerald-500/4 blur-3xl" />
+        <div className="absolute -bottom-60 -left-60 h-125 w-125 rounded-full bg-emerald-500/2 blur-3xl" />
       </div>
     </div>
   )
