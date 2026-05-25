@@ -2,6 +2,8 @@ package xyz.outlinr.api.service;
 
 import xyz.outlinr.api.dto.UserDto;
 
+import java.util.UUID;
+
 public interface UserService {
-    UserDto getUserProfile(String userId);
+    UserDto getUserProfile(UUID userId);
 }

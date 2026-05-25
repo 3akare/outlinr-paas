@@ -8,6 +8,8 @@ import xyz.outlinr.api.entity.User;
 import xyz.outlinr.api.repository.UserRepository;
 import xyz.outlinr.api.service.UserService;
 
+import java.util.UUID;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -15,9 +17,9 @@ public class IUserService implements UserService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDto getUserProfile(String userId) {
+    public UserDto getUserProfile(UUID userId) {
         log.info("Fetching user profile for user: {}", userId);
-        User user = userRepository.findById(Long.valueOf(userId))
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         return UserDto.builder()

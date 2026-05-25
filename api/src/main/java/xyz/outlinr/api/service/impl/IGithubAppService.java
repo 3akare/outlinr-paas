@@ -17,10 +17,7 @@ import java.security.KeyFactory;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.extern.slf4j.Slf4j;
@@ -60,9 +57,9 @@ public class IGithubAppService implements GithubAppService {
     }
 
     @Override
-    public void saveInstallationId(String userId, String githubInstallationId) {
+    public void saveInstallationId(UUID userId, String githubInstallationId) {
         log.info("Saving github installation id: {} for user: {}", githubInstallationId, userId);
-        User user = userRepository.findById(Long.valueOf(userId)).orElseThrow(
+        User user = userRepository.findById(userId).orElseThrow(
             () -> new RuntimeException("User not found")
         );
         user.setGithubInstallationId(githubInstallationId);
@@ -70,8 +67,8 @@ public class IGithubAppService implements GithubAppService {
     }
 
     @Override
-    public List<GithubRepositoryDto> getInstalledRepos(String userId) {
-        User user = userRepository.findById(Long.valueOf(userId)).orElseThrow(
+    public List<GithubRepositoryDto> getInstalledRepos(UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow(
             () -> new RuntimeException("User not found")
         );
 
@@ -97,7 +94,7 @@ public class IGithubAppService implements GithubAppService {
         return response.getRepositories();
     }
 
-    private String getInstallationToken(String installationId) {
+    public String getInstallationToken(String installationId) {
         tokenCache.entrySet().removeIf(entry -> entry.getValue().getExpiresAt().isBefore(Instant.now()));
 
         CachedToken cached = tokenCache.get(installationId);

@@ -12,6 +12,8 @@ import xyz.outlinr.api.dto.DefaultApiResponse;
 import xyz.outlinr.api.dto.UserDto;
 import xyz.outlinr.api.service.UserService;
 
+import java.util.UUID;
+
 @Slf4j
 @RestController
 @RequestMapping(ApplicationUrl.BASE_USER_URL)
@@ -20,7 +22,7 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping(ApplicationUrl.USER_PROFILE)
-    public ResponseEntity<DefaultApiResponse<UserDto>> getUserProfile(@AuthenticationPrincipal String userId) {
+    public ResponseEntity<DefaultApiResponse<UserDto>> getUserProfile(@AuthenticationPrincipal UUID userId) {
         log.info("Inside UserController.getUserProfile. userId: {}", userId);
         return ResponseEntity.ok(DefaultApiResponse.success(userService.getUserProfile(userId)));
     }

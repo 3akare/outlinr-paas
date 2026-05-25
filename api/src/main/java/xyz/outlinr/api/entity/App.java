@@ -7,33 +7,35 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.Instant;
 import java.util.UUID;
 
 @Data
 @Entity
+@Table(name = "apps")
 @Builder
-@Table(name = "users")
-@AllArgsConstructor
 @NoArgsConstructor
-public class User{
+@AllArgsConstructor
+public class App {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(unique = true, nullable = false)
-    private String githubId;
-
-    @Column(unique = true, nullable = false)
     private String name;
 
-    @Column(unique = true, nullable = false)
-    private String email;
+    @Column(nullable = false)
+    private String repoFullName;
 
-    private String avatarUrl;
+    @Column(nullable = false)
+    private String branch;
 
-    @Column(unique = true)
+    @Column(nullable = false)
+    private Integer appPort;
+
+    @Column(nullable = false)
     private String githubInstallationId;
 
     @CreationTimestamp
@@ -42,4 +44,8 @@ public class User{
 
     @UpdateTimestamp
     private Instant updatedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 }

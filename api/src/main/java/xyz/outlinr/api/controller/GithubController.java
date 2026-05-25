@@ -15,6 +15,7 @@ import xyz.outlinr.api.service.GithubAppService;
 import xyz.outlinr.api.dto.DefaultApiResponse;
 
 import java.net.URI;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -37,14 +38,14 @@ public class GithubController {
     @PostMapping(ApplicationUrl.INSTALLATION_SAVE)
     public ResponseEntity<DefaultApiResponse<?>> saveInstallation(
             @RequestParam("installation_id") String installationId,
-            @AuthenticationPrincipal String userId) {
+            @AuthenticationPrincipal UUID userId) {
         log.info("Inside GithubController.saveInstallation. userId: {}, installationId: {}", userId, installationId);
         githubAppService.saveInstallationId(userId, installationId);
         return ResponseEntity.ok(DefaultApiResponse.success(null));
     }
 
     @GetMapping(ApplicationUrl.REPOSITORY_LIST)
-    public ResponseEntity<DefaultApiResponse<?>> getInstalledRepos(@AuthenticationPrincipal String userId) {
+    public ResponseEntity<DefaultApiResponse<?>> getInstalledRepos(@AuthenticationPrincipal UUID userId) {
         log.info("Inside GithubController.getInstalledRepos. userId: {}", userId);
         return ResponseEntity.ok(DefaultApiResponse.success(githubAppService.getInstalledRepos(userId)));
     }
