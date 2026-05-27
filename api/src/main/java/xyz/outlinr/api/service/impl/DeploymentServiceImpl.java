@@ -13,16 +13,12 @@ import xyz.outlinr.api.repository.AppRepository;
 import xyz.outlinr.api.repository.DeploymentRepository;
 import xyz.outlinr.api.repository.EnvironmentVariableRepository;
 import xyz.outlinr.api.repository.UserRepository;
-import xyz.outlinr.api.service.BuildQueueService;
 import xyz.outlinr.api.service.DeploymentService;
-import xyz.outlinr.api.service.GitService;
 import xyz.outlinr.api.service.GithubAppService;
 import xyz.outlinr.api.service.AsyncDeploymentTask;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @Slf4j

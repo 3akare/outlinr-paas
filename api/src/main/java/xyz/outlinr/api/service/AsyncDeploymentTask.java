@@ -12,7 +12,6 @@ import xyz.outlinr.api.entity.Deployment;
 import xyz.outlinr.api.repository.DeploymentRepository;
 
 import java.nio.file.Path;
-import java.util.UUID;
 
 @Slf4j
 @Service

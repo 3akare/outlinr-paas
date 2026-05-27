@@ -158,7 +158,10 @@ public class GithubAppServiceImpl implements GithubAppService {
         }
 
         Instant expiresAt = Instant.parse(response.getExpiresAt());
-        tokenCache.put(installationId, new CachedToken(response.getToken(), expiresAt));
+        CachedToken cachedToken = new CachedToken();
+        cachedToken.setToken(response.getToken());
+        cachedToken.setExpiresAt(expiresAt);
+        tokenCache.put(installationId, cachedToken);
         return response.getToken();
     }
 
