@@ -3,7 +3,7 @@ package xyz.outlinr.api.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import xyz.outlinr.api.dto.UserDto;
+import xyz.outlinr.api.dto.user.UserDto;
 import xyz.outlinr.api.entity.User;
 import xyz.outlinr.api.repository.UserRepository;
 import xyz.outlinr.api.service.UserService;
@@ -13,7 +13,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class IUserService implements UserService {
+public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
 
     @Override

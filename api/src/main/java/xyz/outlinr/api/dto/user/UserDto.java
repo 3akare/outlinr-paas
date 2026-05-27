@@ -1,4 +1,4 @@
-package xyz.outlinr.api.dto;
+package xyz.outlinr.api.dto.user;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;

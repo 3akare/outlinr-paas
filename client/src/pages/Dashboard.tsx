@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 import { useNavigate } from "react-router"
 import { useClearAuth } from "@/store/auth_store"
 import { api } from "@/api/axios"
@@ -13,6 +13,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [reposLoading, setReposLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [search, setSearch] = useState("")
+  const [page, setPage] = useState(1)
+  const itemsPerPage = 8
 
   const initialized = useRef(false)
 
@@ -57,6 +61,27 @@ export default function Dashboard() {
 
     bootstrap()
   }, [])
+
+  // Reset page to 1 on search change to avoid empty pages
+  useEffect(() => {
+    setPage(1)
+  }, [search])
+
+  const filteredRepos = useMemo(() => {
+    if (!search.trim()) return repos
+    const s = search.toLowerCase()
+    return repos.filter(
+      (r) =>
+        r.full_name?.toLowerCase().includes(s) ||
+        (r.description && r.description.toLowerCase().includes(s))
+    )
+  }, [repos, search])
+
+  const paginatedRepos = useMemo(() => {
+    return filteredRepos.slice(0, page * itemsPerPage)
+  }, [filteredRepos, page])
+
+  const hasMore = filteredRepos.length > paginatedRepos.length
 
   const handleLogout = async () => {
     try {
@@ -111,11 +136,21 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="mb-8">
-          <h1 className="mb-1 text-2xl font-light tracking-tight text-white">
-            Repositories
-          </h1>
-          <p className="text-sm text-white/40">Select a repository to deploy</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="mb-1 text-2xl font-light tracking-tight text-white">
+              Repositories
+            </h1>
+            <p className="text-sm text-white/40">Select a repository to deploy</p>
+          </div>
+          {profile?.hasGithubInstallation && (
+            <a
+              href={`https://github.com/apps/${import.meta.env.VITE_GITHUB_APP_NAME}/installations/new`}
+              className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20"
+            >
+              Configure Repositories
+            </a>
+          )}
         </div>
 
         {!profile?.hasGithubInstallation && (
@@ -168,51 +203,94 @@ export default function Dashboard() {
         {profile?.hasGithubInstallation &&
           !reposLoading &&
           repos.length > 0 && (
-            <div className="grid gap-2">
-              {repos.map((repo) => (
-                <div
-                  key={repo.id}
-                  className="group flex items-center justify-between rounded-xl border border-white/6 bg-white/2 px-5 py-4 transition-all duration-150 hover:border-white/12 hover:bg-white/4"
+            <div className="space-y-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search repositories..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-white/5 border border-white/8 rounded-xl px-4 py-3 pl-10 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
+                />
+                <svg
+                  className="absolute left-3.5 top-3.5 text-white/30"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
                 >
-                  <div className="flex min-w-0 items-center gap-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/8 bg-white/4">
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        className="text-white/40"
-                      >
-                        <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-white/90">
-                        {repo.full_name}
-                      </p>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        <span className="text-xs text-white/30">
-                          {repo.default_branch}
-                        </span>
-                        <span className="text-white/10">·</span>
-                        <span
-                          className={`text-xs ${repo.private ? "text-amber-400/60" : "text-emerald-400/60"}`}
-                        >
-                          {repo.private ? "Private" : "Public"}
-                        </span>
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </div>
+
+              {filteredRepos.length === 0 ? (
+                <div className="rounded-2xl border border-white/8 bg-white/2 p-10 text-center">
+                  <p className="text-sm text-white/40">
+                    No repositories match "{search}"
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-2">
+                  {paginatedRepos.map((repo) => (
+                    <div
+                      key={repo.id}
+                      className="group flex items-center justify-between rounded-xl border border-white/6 bg-white/2 px-5 py-4 transition-all duration-150 hover:border-white/12 hover:bg-white/4"
+                    >
+                      <div className="flex min-w-0 items-center gap-4">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/8 bg-white/4">
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            className="text-white/40"
+                          >
+                            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-white/90">
+                            {repo.full_name}
+                          </p>
+                          <div className="mt-0.5 flex items-center gap-2">
+                            <span className="text-xs text-white/30">
+                              {repo.default_branch}
+                            </span>
+                            <span className="text-white/10">·</span>
+                            <span
+                              className={`text-xs ${repo.private ? "text-amber-400/60" : "text-emerald-400/60"}`}
+                            >
+                              {repo.private ? "Private" : "Public"}
+                            </span>
+                          </div>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => navigate("/deploy", { state: { repo } })}
+                        className="ml-4 shrink-0 rounded-lg border border-white/6 px-3 py-1.5 text-xs font-medium text-white/40 transition-all duration-150 group-hover:border-white/15 group-hover:text-white/80"
+                      >
+                        Deploy
+                      </button>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              )}
+
+              {hasMore && (
+                <div className="flex justify-center pt-4">
                   <button
-                    onClick={() => navigate("/deploy", { state: { repo } })}
-                    className="ml-4 shrink-0 rounded-lg border border-white/6 px-3 py-1.5 text-xs font-medium text-white/40 transition-all duration-150 group-hover:border-white/15 group-hover:text-white/80"
+                    onClick={() => setPage((p) => p + 1)}
+                    className="rounded-lg border border-white/8 bg-white/2 px-4 py-2 text-xs font-medium text-white/60 hover:bg-white/4 hover:text-white/80 transition-colors"
                   >
-                    Deploy
+                    Load More
                   </button>
                 </div>
-              ))}
+              )}
             </div>
           )}
       </main>

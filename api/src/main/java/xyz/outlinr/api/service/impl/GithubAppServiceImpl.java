@@ -8,7 +8,9 @@ import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import xyz.outlinr.api.entity.User;
 import xyz.outlinr.api.repository.UserRepository;
@@ -27,14 +29,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.extern.slf4j.Slf4j;
 
-import xyz.outlinr.api.dto.GithubRepositoryDto;
-import xyz.outlinr.api.dto.GithubInstallationTokenResponse;
-import xyz.outlinr.api.dto.GithubRepositoriesResponse;
-import xyz.outlinr.api.dto.CachedToken;
+import xyz.outlinr.api.dto.github.GithubRepositoryDto;
+import xyz.outlinr.api.dto.github.GithubInstallationTokenResponse;
+import xyz.outlinr.api.dto.github.GithubRepositoriesResponse;
+import xyz.outlinr.api.dto.github.CachedToken;
 
 @Slf4j
 @Service
-public class IGithubAppService implements GithubAppService {
+public class GithubAppServiceImpl implements GithubAppService {
     @Value("${outlinr.github.app-id}")
     private String githubAppId;
 
@@ -47,7 +49,7 @@ public class IGithubAppService implements GithubAppService {
     private final RestClient restClient;
     private final Map<String, CachedToken> tokenCache = new ConcurrentHashMap<>();
 
-    public IGithubAppService(UserRepository userRepository, RestClient.Builder restClientBuilder) {
+    public GithubAppServiceImpl(UserRepository userRepository, RestClient.Builder restClientBuilder) {
         this.userRepository = userRepository;
         this.restClient = restClientBuilder
             .baseUrl("https://api.github.com")
@@ -99,6 +101,40 @@ public class IGithubAppService implements GithubAppService {
         return response.getRepositories();
     }
 
+    @Override
+    public Boolean hasDockerFile(String repoFullName, String githubInstallationId) {
+        String installationToken = getInstallationToken(githubInstallationId);
+        try {
+            restClient.get()
+                    .uri("/repos/" + repoFullName + "/contents/Dockerfile")
+                    .header("Authorization", "Bearer " + installationToken)
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("Dockerfile found in {}", repoFullName);
+            return true;
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                try {
+                    restClient.get()
+                            .uri("/repos/" + repoFullName + "/contents/dockerfile")
+                            .header("Authorization", "Bearer " + installationToken)
+                            .retrieve()
+                            .toBodilessEntity();
+                    log.info("dockerfile (lowercase) found in {}", repoFullName);
+                    return true;
+                } catch (HttpClientErrorException ex) {
+                    if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                        log.warn("No Dockerfile or dockerfile found in {}", repoFullName);
+                        return false;
+                    }
+                    throw ex;
+                }
+            }
+            throw e;
+        }
+    }
+
+    @Override
     public String getInstallationToken(String installationId) {
         tokenCache.entrySet().removeIf(entry -> entry.getValue().getExpiresAt().isBefore(Instant.now()));
 
@@ -115,7 +151,7 @@ public class IGithubAppService implements GithubAppService {
             .header("Authorization", "Bearer " + appJwt)
             .retrieve()
             .body(GithubInstallationTokenResponse.class);
-        
+
         if (response == null || response.getToken() == null) {
             log.error("Failed to fetch installation token from GitHub API for installationId: {}", installationId);
             throw new RuntimeException("Failed to fetch installation token");
@@ -123,7 +159,6 @@ public class IGithubAppService implements GithubAppService {
 
         Instant expiresAt = Instant.parse(response.getExpiresAt());
         tokenCache.put(installationId, new CachedToken(response.getToken(), expiresAt));
-
         return response.getToken();
     }
 

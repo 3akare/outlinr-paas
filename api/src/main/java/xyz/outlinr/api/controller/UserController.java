@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.outlinr.api.config.ApplicationUrl;
 import xyz.outlinr.api.dto.DefaultApiResponse;
-import xyz.outlinr.api.dto.UserDto;
+import xyz.outlinr.api.dto.user.UserDto;
 import xyz.outlinr.api.service.UserService;
 
 import java.util.UUID;

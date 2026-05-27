@@ -14,7 +14,10 @@ import java.util.UUID;
 @Data
 @Entity
 @Builder
-@Table(name = "refresh_tokens")
+@Table(name = "refresh_tokens", indexes = {
+    @Index(name = "idx_refresh_tokens_user_id", columnList = "user_id"),
+    @Index(name = "idx_refresh_tokens_token", columnList = "token")
+})
 @AllArgsConstructor
 @NoArgsConstructor
 public class RefreshToken {
@@ -36,7 +39,7 @@ public class RefreshToken {
     @UpdateTimestamp
     private Instant updatedAt;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "id")
     private User user;
 }

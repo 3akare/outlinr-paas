@@ -1,4 +1,4 @@
-package xyz.outlinr.api.dto;
+package xyz.outlinr.api.dto.github;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -13,30 +13,28 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "apps")
+@Table(name = "deployments", indexes = {
+    @Index(name = "idx_deployments_app_id", columnList = "app_id")
+})
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class App {
+public class Deployment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(unique = true, nullable = false)
-    private String name;
-
     @Column(nullable = false)
-    private String repoFullName;
+    private String status;
 
-    @Column(nullable = false)
-    private String branch;
+    private String commitSha;
 
-    @Column(nullable = false)
-    private Integer appPort;
+    private String containerId;
 
-    @Column(nullable = false)
-    private String githubInstallationId;
+    private Integer hostPort;
+
+    private String errorMessage;
 
     @CreationTimestamp
     @Column(updatable = false)
@@ -46,6 +44,6 @@ public class App {
     private Instant updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "id")
-    private User user;
+    @JoinColumn(name = "app_id", nullable = false, referencedColumnName = "id")
+    private App app;
 }
