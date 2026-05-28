@@ -15,7 +15,6 @@ import xyz.outlinr.api.repository.EnvironmentVariableRepository;
 import xyz.outlinr.api.repository.UserRepository;
 import xyz.outlinr.api.service.DeploymentService;
 import xyz.outlinr.api.service.GithubAppService;
-import xyz.outlinr.api.service.AsyncDeploymentTask;
 
 import java.util.ArrayList;
 import java.util.List;

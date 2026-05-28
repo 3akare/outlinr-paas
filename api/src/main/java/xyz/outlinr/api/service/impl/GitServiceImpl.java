@@ -3,6 +3,9 @@ package xyz.outlinr.api.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.springframework.stereotype.Service;
 import xyz.outlinr.api.service.GitService;
@@ -43,10 +46,27 @@ public class GitServiceImpl implements GitService {
     }
 
     @Override
-    public void deleteRepository(UUID deploymentId) {
+    public void deleteWorkspace(UUID deploymentId) {
         Path target = Path.of(BUILD_WORKSPACE, deploymentId.toString());
         deleteQuietly(target);
         log.info("Deleted build workspace for deploymentId: {}", deploymentId);
+    }
+
+    @Override
+    public String getHeadCommitSha(Path clonePath) {
+        try {
+            Repository repository = new FileRepositoryBuilder()
+                .setGitDir(clonePath.resolve(".git").toFile())
+                .build();
+
+            ObjectId head = repository.resolve("HEAD");
+            if (head == null) {
+                throw new RuntimeException("Could not resolve HEAD in cloned repo at: " + clonePath);
+            }
+            return head.getName();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read HEAD commit SHA from: " + clonePath, e);
+        }
     }
 
     private void deleteQuietly(Path path) {

@@ -1,4 +1,4 @@
-package xyz.outlinr.api.service;
+package xyz.outlinr.api.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +10,9 @@ import xyz.outlinr.api.dto.enums.DeploymentStatus;
 import xyz.outlinr.api.entity.App;
 import xyz.outlinr.api.entity.Deployment;
 import xyz.outlinr.api.repository.DeploymentRepository;
+import xyz.outlinr.api.service.BuildQueueService;
+import xyz.outlinr.api.service.GitService;
+import xyz.outlinr.api.service.GithubAppService;
 
 import java.nio.file.Path;
 
