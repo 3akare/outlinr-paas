@@ -29,7 +29,8 @@ public class GithubController {
 
     @GetMapping(ApplicationUrl.INSTALLATION_CALLBACK)
     public ResponseEntity<Void> handleInstallationCallback(
-            @RequestParam("installation_id") String installationId) {
+            @RequestParam("installation_id") String installationId
+    ) {
         log.info("Inside GithubController.handleInstallationCallback. installationId: {}", installationId);
         URI redirectUri = URI.create(clientUrl + "/dashboard?installation_id=" + installationId);
         return ResponseEntity.status(302).location(redirectUri).build();
@@ -38,14 +39,17 @@ public class GithubController {
     @PostMapping(ApplicationUrl.INSTALLATION_SAVE)
     public ResponseEntity<DefaultApiResponse<?>> saveInstallation(
             @RequestParam("installation_id") String installationId,
-            @AuthenticationPrincipal UUID userId) {
+            @AuthenticationPrincipal UUID userId
+    ) {
         log.info("Inside GithubController.saveInstallation. userId: {}, installationId: {}", userId, installationId);
         githubAppService.saveInstallationId(userId, installationId);
         return ResponseEntity.ok(DefaultApiResponse.success(null));
     }
 
     @GetMapping(ApplicationUrl.REPOSITORY_LIST)
-    public ResponseEntity<DefaultApiResponse<?>> getInstalledRepos(@AuthenticationPrincipal UUID userId) {
+    public ResponseEntity<DefaultApiResponse<?>> getInstalledRepos(
+            @AuthenticationPrincipal UUID userId
+    ) {
         log.info("Inside GithubController.getInstalledRepos. userId: {}", userId);
         return ResponseEntity.ok(DefaultApiResponse.success(githubAppService.getInstalledRepos(userId)));
     }

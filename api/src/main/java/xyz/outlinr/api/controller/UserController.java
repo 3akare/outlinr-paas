@@ -22,7 +22,9 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping(ApplicationUrl.USER_PROFILE)
-    public ResponseEntity<DefaultApiResponse<UserDto>> getUserProfile(@AuthenticationPrincipal UUID userId) {
+    public ResponseEntity<DefaultApiResponse<UserDto>> getUserProfile(
+            @AuthenticationPrincipal UUID userId
+    ) {
         log.info("Inside UserController.getUserProfile. userId: {}", userId);
         return ResponseEntity.ok(DefaultApiResponse.success(userService.getUserProfile(userId)));
     }

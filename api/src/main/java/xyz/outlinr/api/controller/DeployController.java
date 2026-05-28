@@ -22,13 +22,18 @@ public class DeployController {
     private final DeploymentService deploymentService;
 
     @PostMapping(ApplicationUrl.DEPLOY_APP)
-    public ResponseEntity<DefaultApiResponse<?>> deploy(@RequestBody DeployRequest deployRequest, @AuthenticationPrincipal UUID userId) {
+    public ResponseEntity<DefaultApiResponse<?>> deploy(
+            @RequestBody DeployRequest deployRequest,
+            @AuthenticationPrincipal UUID userId
+    ) {
         log.info("Inside DeployController.deploy. userId: {}", userId);
         return ResponseEntity.ok(DefaultApiResponse.success(deploymentService.deploy(deployRequest, userId)));
     }
 
     @GetMapping(ApplicationUrl.CHECK_NAME)
-    public ResponseEntity<DefaultApiResponse<?>> checkName(@RequestParam("name") String name) {
+    public ResponseEntity<DefaultApiResponse<?>> checkName(
+            @RequestParam("name") String name
+    ) {
         log.info("Inside DeployController.checkName. name: {}", name);
         return ResponseEntity.ok(DefaultApiResponse.success(deploymentService.checkName(name)));
     }
@@ -38,7 +43,7 @@ public class DeployController {
             @RequestParam("repoFullName") String repoFullName,
             @AuthenticationPrincipal UUID userId
     ) {
-        log.info("Inside DeployController.validateRepo. repoFullName: {}", repoFullName);
+        log.info("Inside DeployController.validateRepo. repoFullName: {}, userId: {}", repoFullName, userId);
         return ResponseEntity.ok(DefaultApiResponse.success(deploymentService.validateRepo(repoFullName, userId)));
     }
 

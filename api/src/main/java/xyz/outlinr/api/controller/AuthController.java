@@ -20,13 +20,17 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
 
     @PostMapping(ApplicationUrl.REFRESH_TOKEN)
-    public ResponseEntity<DefaultApiResponse<?>> refreshToken(HttpServletRequest request) {
+    public ResponseEntity<DefaultApiResponse<?>> refreshToken(
+            HttpServletRequest request
+    ) {
         log.info("Processing refresh token request from IP: {}", request.getRemoteAddr());
         return refreshTokenService.refreshToken(request.getCookies());
     }
 
     @PostMapping(ApplicationUrl.LOGOUT)
-    public ResponseEntity<DefaultApiResponse<?>> logout(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<DefaultApiResponse<?>> logout(
+            HttpServletRequest request, HttpServletResponse response
+    ) {
         log.info("Processing logout request from IP: {}", request.getRemoteAddr());
         return refreshTokenService.revokeToken(request.getCookies(), response);
     }
