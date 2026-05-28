@@ -46,9 +46,12 @@ public class AsyncDeploymentTask {
             payload.setBranch(app.getBranch());
             payload.setGithubInstallationId(githubInstallationId);
             payload.setAppPort(app.getAppPort());
+
             buildQueueService.push(payload);
-            deployment.setStatus(DeploymentStatus.QUEUED.name());
             log.info("Successfully queued build job for deploymentId={}", deployment.getId());
+
+            deployment.setStatus(DeploymentStatus.QUEUED.name());
+            deploymentRepository.save(deployment);
         } catch (Exception e) {
             log.error("Deployment failed for deploymentId={}", deployment.getId(), e);
             deployment.setStatus(DeploymentStatus.FAILED.name());
