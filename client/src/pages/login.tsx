@@ -25,7 +25,7 @@ export default function Login() {
           <div className="pointer-events-none absolute inset-0 rounded-2xl bg-linear-to-b from-white/6 to-transparent" />
           <div className="relative rounded-2xl border border-white/8 bg-white/3 p-8 backdrop-blur-sm">
             <a
-              href={`${apiUrl}/oauth2/authorization/github`}
+              href={`${apiUrl}/api/oauth2/authorization/github`}
               className="group flex w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-3 text-sm font-medium text-gray-900 transition-all duration-150 hover:bg-white/90 active:scale-[0.98]"
             >
               <svg

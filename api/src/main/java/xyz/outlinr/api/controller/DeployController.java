@@ -54,5 +54,13 @@ public class DeployController {
         log.info("Inside DeployController.getDeploymentStatus. deploymentId: {}", deploymentId);
         return ResponseEntity.ok(DefaultApiResponse.success(deploymentService.getDeploymentStatus(deploymentId)));
     }
+
+    @GetMapping
+    public ResponseEntity<DefaultApiResponse<?>> listDeployments(
+            @AuthenticationPrincipal UUID userId
+    ) {
+        log.info("Inside DeployController.listDeployments. userId: {}", userId);
+        return ResponseEntity.ok(DefaultApiResponse.success(deploymentService.listDeployments(userId)));
+    }
  }
 

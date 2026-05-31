@@ -1,3 +1,6 @@
+server:
+  forward-headers-strategy: FRAMEWORK
+
 spring:
   application:
     name: api
@@ -9,7 +12,7 @@ spring:
     password: ${DB_PASSWORD}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -25,6 +28,7 @@ spring:
             scope:
               - read:user
               - user:email
+            redirect-uri: "{baseUrl}/api/login/oauth2/code/{registrationId}"
   data:
     redis:
       host: ${REDIS_HOST}

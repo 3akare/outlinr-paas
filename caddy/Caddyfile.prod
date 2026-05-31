@@ -7,18 +7,22 @@
     tls {
         dns cloudflare {$CF_API_TOKEN}
     }
-    # Dynamic routing configured via API's Caddy admin calls will match domains here
 }
 
 {$DOMAIN} {
     tls {
         dns cloudflare {$CF_API_TOKEN}
     }
+    # Forward all /api/* calls to Spring Boot
+    handle /api/* {
+        @oauth path_regexp oauth ^/api(?P<suffix>(?:/oauth2/|/login/oauth2/).*)$
+        rewrite @oauth {re.oauth.suffix}
+        reverse_proxy api:8080
+    }
     
-    # Reverse proxy API requests to Spring Boot
-    reverse_proxy /api/* api:8080
-    
-    # Statically serve React frontend files
-    root * /usr/share/caddy
-    file_server
+    # Serve static assets
+    handle * {
+        root * /usr/share/caddy
+        file_server
+    }
 }

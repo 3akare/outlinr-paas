@@ -32,11 +32,11 @@ export default function DeploymentStatus() {
     return () => clearInterval(interval)
   }, [id])
 
-  const isTerminal = status === "SUCCESS" || status === "FAILED"
+  const isTerminal = status === "ACTIVE" || status === "SUCCESS" || status === "FAILED"
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
+      <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8 text-center backdrop-blur-sm">
         <h1 className="text-2xl font-light mb-2">Deployment Status</h1>
         <p className="text-sm text-white/40 mb-8 break-all">ID: {id}</p>
         
@@ -49,7 +49,7 @@ export default function DeploymentStatus() {
             {!isTerminal && (
               <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-400/20 border-t-emerald-400" />
             )}
-            {status === "SUCCESS" && (
+            {(status === "ACTIVE" || status === "SUCCESS") && (
               <div className="h-12 w-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/40">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -68,12 +68,14 @@ export default function DeploymentStatus() {
               {status}
             </div>
             
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="mt-4 px-6 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm transition-colors border border-white/10"
-            >
-              Back to Dashboard
-            </button>
+            <div className="flex flex-col gap-2 w-full mt-4">
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="w-full py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-semibold transition-colors border border-white/10"
+              >
+                Back to Dashboard
+              </button>
+            </div>
           </div>
         )}
       </div>

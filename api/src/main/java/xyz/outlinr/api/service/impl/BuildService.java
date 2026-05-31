@@ -85,7 +85,7 @@ public class BuildService {
         Path workspacePath = Path.of(BUILD_WORKSPACE, deploymentId.toString());
         Path imageTarPath = Path.of(IMAGES_DIR, deploymentId + ".tar");
 
-        Deployment deployment = deploymentRepository.findById(deploymentId)
+        Deployment deployment = deploymentRepository.findWithAppById(deploymentId)
                 .orElseThrow(() -> new RuntimeException("Deployment not found for id: " + deploymentId));
 
         try {

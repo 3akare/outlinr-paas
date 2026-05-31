@@ -5,3 +5,7 @@ services:
       dockerfile: caddy/Dockerfile.prod
     volumes:
       - ./caddy/Caddyfile.prod:/etc/caddy/Caddyfile
+    environment:
+      - DOMAIN=${DOMAIN}
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - ACME_EMAIL=${ACME_EMAIL}

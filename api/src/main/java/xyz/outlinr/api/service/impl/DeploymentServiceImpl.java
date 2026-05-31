@@ -101,4 +101,22 @@ public class DeploymentServiceImpl implements DeploymentService {
         response.setStatus(deployment.getStatus());
         return response;
     }
+
+    @Override
+    public List<DeploymentResponse> listDeployments(UUID userId) {
+        List<Deployment> deployments = deploymentRepository.findByUserId(userId);
+        return deployments.stream()
+            .map(d -> DeploymentResponse.builder()
+                .id(d.getId())
+                .appName(d.getApp().getName())
+                .repoFullName(d.getApp().getRepoFullName())
+                .branch(d.getApp().getBranch())
+                .appPort(d.getApp().getAppPort())
+                .status(d.getStatus())
+                .commitSha(d.getCommitSha())
+                .errorMessage(d.getErrorMessage())
+                .createdAt(d.getCreatedAt())
+                .build())
+            .toList();
+    }
 }

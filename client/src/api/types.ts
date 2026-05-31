@@ -13,3 +13,15 @@ export type Repo = {
   default_branch: string
   description?: string
 }
+
+export type Deployment = {
+  id: string
+  appName: string
+  repoFullName: string
+  branch: string
+  appPort: number
+  status: string
+  commitSha: string
+  errorMessage?: string
+  createdAt: string
+}

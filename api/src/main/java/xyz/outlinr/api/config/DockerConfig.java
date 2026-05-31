@@ -3,7 +3,7 @@ package xyz.outlinr.api.config;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+import com.github.dockerjava.okhttp.OkDockerHttpClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,11 +17,10 @@ public class DockerConfig {
             .createDefaultConfigBuilder()
             .withDockerHost("unix:///var/run/docker.sock")
             .build();
-        ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+
+        OkDockerHttpClient httpClient = new OkDockerHttpClient.Builder()
             .dockerHost(config.getDockerHost())
-            .maxConnections(20)
-            .connectionTimeout(Duration.ofSeconds(10))
-            .responseTimeout(Duration.ofSeconds(30))
+            .sslConfig(config.getSSLConfig())
             .build();
         return DockerClientImpl.getInstance(config, httpClient);
     }

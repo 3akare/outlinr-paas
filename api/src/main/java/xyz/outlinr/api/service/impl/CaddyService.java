@@ -1,6 +1,5 @@
 package xyz.outlinr.api.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,9 +8,11 @@ import org.springframework.context.event.EventListener;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.ObjectMapper;
 import xyz.outlinr.api.dto.enums.DeploymentStatus;
 import xyz.outlinr.api.entity.Deployment;
 import xyz.outlinr.api.repository.DeploymentRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -35,20 +36,9 @@ public class CaddyService {
     private final RestClient restClient = RestClient.create();
 
     @EventListener(ApplicationReadyEvent.class)
+    @Transactional
     public void syncRoutesOnStartup() {
         log.info("Syncing Caddy routes from database on startup...");
-        
-        try {
-            restClient.put()
-                .uri(caddyAdminUrl + "/config/apps/http/servers/main/routes")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body("[]")
-                .retrieve()
-                .toBodilessEntity();
-            log.info("Cleared existing Caddy routes list atomically for route sync.");
-        } catch (Exception e) {
-            log.warn("Could not clear Caddy routes on startup (Caddy may be uninitialized or blank config): {}", e.getMessage());
-        }
 
         List<Deployment> activeDeployments = deploymentRepository.findByStatus(DeploymentStatus.ACTIVE.name());
         for (Deployment deployment : activeDeployments) {
@@ -68,6 +58,9 @@ public class CaddyService {
     public void addRoute(String appName, Integer appPort, java.util.UUID deploymentId) {
         String subdomain = appName + "." + domain;
         String upstream = "outlinr-" + deploymentId + ":" + appPort;
+        
+        removeRoute(deploymentId);
+
         Map<String, Object> route = Map.of(
             "@id", "route-" + deploymentId,
             "match", List.of(
@@ -90,7 +83,7 @@ public class CaddyService {
         try {
             String body = objectMapper.writeValueAsString(route);
             restClient.post()
-                .uri(caddyAdminUrl + "/config/apps/http/servers/main/routes")
+                .uri(caddyAdminUrl + "/config/apps/http/servers/srv0/routes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
@@ -109,7 +102,8 @@ public class CaddyService {
                 .toBodilessEntity();
             log.info("Caddy route removed for deploymentId={}", deploymentId);
         } catch (Exception e) {
-            log.warn("Could not remove Caddy route for deploymentId={}: {}", deploymentId, e.getMessage());
+            // Ignored if the route did not exist
+            log.debug("Caddy route did not exist or could not be removed for deploymentId={}: {}", deploymentId, e.getMessage());
         }
     }
 }

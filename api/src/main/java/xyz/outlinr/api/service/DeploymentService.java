@@ -1,10 +1,8 @@
 package xyz.outlinr.api.service;
 
-import xyz.outlinr.api.dto.deploy.DeployRequest;
-import xyz.outlinr.api.dto.deploy.DeploymentStatusResponse;
-import xyz.outlinr.api.dto.deploy.NameAvailabilityResponse;
-import xyz.outlinr.api.dto.deploy.RepoValidationResponse;
+import xyz.outlinr.api.dto.deploy.*;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface DeploymentService {
@@ -12,4 +10,5 @@ public interface DeploymentService {
     NameAvailabilityResponse checkName(String name);
     RepoValidationResponse validateRepo(String repoFullName, UUID userId);
     DeploymentStatusResponse getDeploymentStatus(UUID deploymentId);
+    List<DeploymentResponse> listDeployments(UUID userId);
 }

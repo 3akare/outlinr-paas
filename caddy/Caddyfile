@@ -3,11 +3,16 @@
     admin 0.0.0.0:2019
 }
 
-*.localhost {
-    respond "No route configured for this subdomain." 404
-}
-
-localhost {
-    reverse_proxy /api/* api:8080
-    reverse_proxy * client:5173
+http://localhost {
+    # Forward all /api/* calls to Spring Boot
+    handle /api/* {
+        @oauth path_regexp oauth ^/api(?P<suffix>(?:/oauth2/|/login/oauth2/).*)$
+        rewrite @oauth {re.oauth.suffix}
+        reverse_proxy api:8080
+    }
+    
+    # Forward everything else to Vite dev server
+    handle * {
+        reverse_proxy client:5173
+    }
 }

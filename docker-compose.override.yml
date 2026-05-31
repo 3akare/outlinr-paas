@@ -32,7 +32,7 @@ services:
       - "5173:5173"
     command: sh -c "bun install && bun run dev -- --host"
     environment:
-      - VITE_API_URL=http://localhost/api
+      - VITE_API_URL=http://localhost
       - VITE_GITHUB_APP_NAME=outlinr-dev
     depends_on:
       - api
