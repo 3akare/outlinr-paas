@@ -6,8 +6,6 @@ services:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: password
       POSTGRES_DB: outlinr_db
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -16,8 +14,6 @@ services:
   redis:
     image: redis:5.0.7
     container_name: outlinr_paas_redis
-    ports:
-      - "6379:6379"
     volumes:
       - redisdata:/data
     networks:
@@ -27,11 +23,29 @@ services:
     image: moby/buildkit:latest
     container_name: outlinr_paas_buildkitd
     privileged: true
-    ports:
-      - "1234:1234"
     command: --addr tcp://0.0.0.0:1234
     volumes:
       - buildkitd_data:/var/lib/buildkit
+      - build_workspace:/tmp/builds
+    networks:
+      - outlinr-network
+
+  caddy:
+    image: caddy:latest
+    container_name: outlinr_paas_caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN}
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - ACME_EMAIL=${ACME_EMAIL}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - outlinr-network
 
@@ -40,8 +54,6 @@ services:
       context: ./api
       dockerfile: Dockerfile
     container_name: outlinr_paas_api
-    ports:
-      - "8080:8080"
     env_file:
       - ./api/.env
     environment:
@@ -51,26 +63,12 @@ services:
       - postgres
       - redis
       - buildkitd
+      - caddy
     volumes:
       - ./api/secrets:/app/secrets
-    networks:
-      - outlinr-network
-
-  client:
-    image: oven/bun:1.1-alpine
-    container_name: outlinr_paas_client
-    working_dir: /app
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-    ports:
-      - "5173:5173"
-    command: sh -c "bun install && bun run dev -- --host"
-    environment:
-      - VITE_API_URL=http://localhost:8080
-      - VITE_GITHUB_APP_NAME=outlinr-dev
-    depends_on:
-      - api
+      - build_workspace:/tmp/builds
+      - images_workspace:/tmp/images
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - outlinr-network
 
@@ -78,6 +76,10 @@ volumes:
   pgdata:
   redisdata:
   buildkitd_data:
+  caddy_data:
+  caddy_config:
+  build_workspace:
+  images_workspace:
 
 networks:
   outlinr-network:

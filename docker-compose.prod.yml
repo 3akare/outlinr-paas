@@ -1,0 +1,7 @@
+services:
+  caddy:
+    build:
+      context: .
+      dockerfile: caddy/Dockerfile.prod
+    volumes:
+      - ./caddy/Caddyfile.prod:/etc/caddy/Caddyfile

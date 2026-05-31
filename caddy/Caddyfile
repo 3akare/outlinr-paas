@@ -1,0 +1,13 @@
+{
+    auto_https off
+    admin 0.0.0.0:2019
+}
+
+*.localhost {
+    respond "No route configured for this subdomain." 404
+}
+
+localhost {
+    reverse_proxy /api/* api:8080
+    reverse_proxy * client:5173
+}

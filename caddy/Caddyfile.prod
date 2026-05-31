@@ -1,0 +1,24 @@
+{
+    email {$ACME_EMAIL}
+    admin 0.0.0.0:2019
+}
+
+*.{$DOMAIN} {
+    tls {
+        dns cloudflare {$CF_API_TOKEN}
+    }
+    # Dynamic routing configured via API's Caddy admin calls will match domains here
+}
+
+{$DOMAIN} {
+    tls {
+        dns cloudflare {$CF_API_TOKEN}
+    }
+    
+    # Reverse proxy API requests to Spring Boot
+    reverse_proxy /api/* api:8080
+    
+    # Statically serve React frontend files
+    root * /usr/share/caddy
+    file_server
+}

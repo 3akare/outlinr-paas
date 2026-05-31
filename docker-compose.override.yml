@@ -1,0 +1,40 @@
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  buildkitd:
+    ports:
+      - "1234:1234"
+
+  caddy:
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"
+
+  api:
+    ports:
+      - "8080:8080"
+
+  client:
+    image: oven/bun:1.1-alpine
+    container_name: outlinr_paas_client
+    working_dir: /app
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "bun install && bun run dev -- --host"
+    environment:
+      - VITE_API_URL=http://localhost/api
+      - VITE_GITHUB_APP_NAME=outlinr-dev
+    depends_on:
+      - api
+    networks:
+      - outlinr-network

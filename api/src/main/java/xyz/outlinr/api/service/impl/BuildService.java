@@ -36,6 +36,7 @@ public class BuildService {
     private final RedisTemplate<String, String> redisTemplate;
     private final GitService gitService;
     private final ObjectMapper objectMapper;
+    private final RuntimeService runtimeService;
 
     private volatile boolean running = true;
     private Thread workerThread;
@@ -103,11 +104,9 @@ public class BuildService {
             gitService.deleteWorkspace(deploymentId);
             log.info("Workspace deleted for deploymentId={}", deploymentId);
 
-            //todo: runtime service goes here
+            runtimeService.run(deployment, imageTarPath, imageTag, payload);
 
-            log.info("Build complete for deploymentId={}. imageTag={} tarPath={}",
-                    deploymentId, imageTag, imageTarPath);
-
+            log.info("Build complete for deploymentId={}. imageTag={} tarPath={}", deploymentId, imageTag, imageTarPath);
         } catch (Exception e) {
             log.error("Build failed for deploymentId={}: {}", deploymentId, e.getMessage(), e);
             deployment.setStatus(DeploymentStatus.FAILED.name());
