@@ -7,5 +7,6 @@ public enum DeploymentStatus {
     PUSHING,
     STARTING,
     ACTIVE,
-    FAILED
+    FAILED,
+    SUPERSEDED
 }
