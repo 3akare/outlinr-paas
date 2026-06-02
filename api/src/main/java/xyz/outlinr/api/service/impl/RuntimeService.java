@@ -87,7 +87,7 @@ public class RuntimeService {
                 HostConfig.newHostConfig()
                     .withNetworkMode("outlinr-network") // Join Caddy's shared network
                     .withRestartPolicy(RestartPolicy.unlessStoppedRestart())
-                    .withMemory(512 * 1024 * 1024L) // Exclude exposed ports and bindings
+                    .withMemory(512 * 1024 * 1024L)
             )
             .withEnv(envVars)
             .exec();

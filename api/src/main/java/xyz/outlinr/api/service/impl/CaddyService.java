@@ -102,7 +102,6 @@ public class CaddyService {
                 .toBodilessEntity();
             log.info("Caddy route removed for deploymentId={}", deploymentId);
         } catch (Exception e) {
-            // Ignored if the route did not exist
             log.debug("Caddy route did not exist or could not be removed for deploymentId={}: {}", deploymentId, e.getMessage());
         }
     }

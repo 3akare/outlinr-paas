@@ -106,20 +106,20 @@ public class GithubAppServiceImpl implements GithubAppService {
         String installationToken = getInstallationToken(githubInstallationId);
         try {
             restClient.get()
-                    .uri("/repos/" + repoFullName + "/contents/Dockerfile")
-                    .header("Authorization", "Bearer " + installationToken)
-                    .retrieve()
-                    .toBodilessEntity();
+                .uri("/repos/" + repoFullName + "/contents/Dockerfile")
+                .header("Authorization", "Bearer " + installationToken)
+                .retrieve()
+                .toBodilessEntity();
             log.info("Dockerfile found in {}", repoFullName);
             return true;
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
                 try {
                     restClient.get()
-                            .uri("/repos/" + repoFullName + "/contents/dockerfile")
-                            .header("Authorization", "Bearer " + installationToken)
-                            .retrieve()
-                            .toBodilessEntity();
+                        .uri("/repos/" + repoFullName + "/contents/dockerfile")
+                        .header("Authorization", "Bearer " + installationToken)
+                        .retrieve()
+                        .toBodilessEntity();
                     log.info("dockerfile (lowercase) found in {}", repoFullName);
                     return true;
                 } catch (HttpClientErrorException ex) {

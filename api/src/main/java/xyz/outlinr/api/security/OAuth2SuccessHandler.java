@@ -35,8 +35,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private String clientUrl;
 
     @Transactional
-    public void onAuthenticationSuccess(@NonNull HttpServletRequest request, HttpServletResponse response,
-            Authentication authentication) throws IOException {
+    public void onAuthenticationSuccess(@NonNull HttpServletRequest request, HttpServletResponse response, Authentication authentication
+    ) throws IOException {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         assert oAuth2User != null;
         Integer id = oAuth2User.getAttribute("id");
@@ -72,9 +72,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         String callbackUrl = clientUrl + "/auth/callback";
         String targetUrl = UriComponentsBuilder.fromUriString(callbackUrl)
-                .queryParam("access_token", accessToken)
-                .build()
-                .toUriString();
+            .queryParam("access_token", accessToken)
+            .build()
+            .toUriString();
         
         log.info("Invalidating temporary OAuth session for stateless architecture (GitHub ID: {})", githubId);
         request.getSession().invalidate();

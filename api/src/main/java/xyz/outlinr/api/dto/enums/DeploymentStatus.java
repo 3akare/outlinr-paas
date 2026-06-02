@@ -4,7 +4,6 @@ public enum DeploymentStatus {
     STARTED,
     QUEUED,
     BUILDING,
-    PUSHING,
     STARTING,
     ACTIVE,
     FAILED,

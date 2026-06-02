@@ -19,8 +19,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDto getUserProfile(UUID userId) {
         log.info("Fetching user profile for user: {}", userId);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
 
         return UserDto.builder()
             .id(user.getId())
