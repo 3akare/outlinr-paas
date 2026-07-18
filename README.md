@@ -43,12 +43,39 @@ Please read our [Contributing Guide](CONTRIBUTING.md) to learn about our develop
 
 ## Additional Information
 
-### Architecture & Tech Stack
-Outlinr is engineered for speed and reliability, combining modern tooling to deliver a Vercel-like developer experience on your own hardware:
-- **Backend Engine**: Spring Boot 3, Hibernate, PostgreSQL, Redis
-- **Frontend Dashboard**: React, Vite, TailwindCSS (Dark Mode optimized)
-- **Infrastructure Orchestration**: Docker Java API (Buildkit integration)
-- **Dynamic Routing**: Caddy Server (Automatic Reverse Proxy & SSL)
+### System Architecture
+Outlinr uses a microservice-inspired architecture within a Spring Boot monolith, coordinating heavily with the Docker socket and Caddy to provide a seamless PaaS experience.
+
+#### 1. Deployment Service (`DeploymentService`)
+The entry point for applications. It handles the API lifecycle of a deployment:
+- Validates repository access and checks for duplicate app names.
+- Initializes database records for Apps, Environment Variables, and Deployments.
+- Pushes a deployment payload to a Redis queue for asynchronous, non-blocking processing.
+
+#### 2. Building Service (`BuildService` & `Buildkit`)
+A background worker that polls Redis for queued deployments. When a job is picked up:
+- It clones the user's GitHub repository to a local workspace (`/tmp/builds`).
+- Connects to the `outlinr_paas_buildkitd` daemon via the Docker Java API to execute a BuildKit native image build.
+- Packages the final Docker image as an optimized tarball (`/tmp/images`) while simultaneously streaming real-time build logs to the frontend via Server-Sent Events (SSE).
+
+#### 3. Runtime Service (`RuntimeService`)
+Responsible for infrastructure orchestration and container lifecycle management:
+- Loads the built Docker image tarballs into the host Docker Daemon.
+- Provisions new isolated Docker containers attached to the secure `outlinr-network` bridge.
+- Injects user-defined environment variables and continuously polls container health status until the application is fully online (`ACTIVE`).
+- Automatically handles teardown and garbage collection of superseded containers when a new deployment goes live.
+
+#### 4. Routing Service (`CaddyService`)
+Manages dynamic reverse proxying without requiring Nginx reloads:
+- Integrates with Caddy's Admin API (`http://caddy:2019`) to dynamically add or remove routes.
+- Maps `*.localhost` (or custom domains) directly to the isolated Docker containers (`outlinr-{deploymentId}:{appPort}`).
+- Automatically handles SSL certificate provisioning (if configured for production domains).
+
+#### 5. GitHub Integration Service (`GithubAppService`)
+Handles secure communication between Outlinr and GitHub's ecosystem via a registered GitHub App:
+- **OAuth Authentication**: Manages the user login flow, token exchanges, and stores secure session state.
+- **Installation Flow**: When a user authorizes the Outlinr GitHub App, GitHub redirects back with an `installation_id`. This service securely binds the installation to the user's profile.
+- **API Communication**: Generates short-lived JSON Web Tokens (JWT) signed with a private key to authenticate as the GitHub App. It uses these to fetch repository lists, validate permissions, check for `Dockerfile` presence, and securely clone code during the build phase.
 
 ### Core Features
 - **Instant GitHub Deployments**: Select a repository and Outlinr builds and deploys it automatically.
