@@ -5,7 +5,6 @@
 **Deploy your GitHub repositories instantly.**<br>
 Outlinr is a lightweight, zero-configuration Platform as a Service (PaaS) that automatically builds your Docker containers and provisions live subdomains for your web applications with zero infrastructure headaches.
 
-[![Live Demo](https://img.shields.io/badge/Try_Outlinr_Live-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://outlinr.xyz)
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)
 ![Status](https://img.shields.io/badge/status-Active-success.svg?style=flat-square)
@@ -23,7 +22,7 @@ Get your own private PaaS running locally in under 60 seconds.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/alexanderr/outlinr-paas.git
+git clone https://github.com/3akare/outlinr-paas.git
 cd outlinr-paas
 
 # 2. Configure environment
