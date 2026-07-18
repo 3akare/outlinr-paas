@@ -21,4 +21,7 @@ public interface DeploymentRepository extends JpaRepository<Deployment, UUID> {
 
     @Query("SELECT d FROM Deployment d JOIN FETCH d.app a WHERE a.user.id = :userId ORDER BY d.createdAt DESC")
     List<Deployment> findByUserId(@Param("userId") UUID userId);
+
+    List<Deployment> findByAppId(UUID appId);
+    void deleteByAppId(UUID appId);
 }

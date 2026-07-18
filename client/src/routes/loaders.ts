@@ -7,7 +7,7 @@ export const protectedLoader = async () => {
   if (token) return null
 
   try {
-    const response = await axios.post<any>(
+    const response = await axios.post<{ data?: { accessToken: string }, accessToken?: string }>(
       `${import.meta.env.VITE_API_URL}/api/auth/refresh`,
       {},
       { withCredentials: true }

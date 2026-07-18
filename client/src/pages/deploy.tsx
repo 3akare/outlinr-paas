@@ -1,8 +1,22 @@
 import { useEffect, useState, useRef } from "react"
-import { useNavigate, useLocation } from "react-router"
+import { useNavigate, useLocation, Link } from "react-router"
 import { api } from "@/api/axios"
 import type { Repo } from "@/api/types"
 import { toast } from "sonner"
+import Header from "@/components/Header"
+import { GithubIcon } from "@/components/GithubIcon"
+import {
+  ArrowLeft,
+  GitBranch,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Plus,
+  Trash2,
+  Eye,
+  EyeOff,
+  Sliders
+} from "lucide-react"
 
 export default function Deploy() {
   const navigate = useNavigate()
@@ -12,9 +26,9 @@ export default function Deploy() {
 
   const [name, setName] = useState("")
   const [branch, setBranch] = useState(repo?.default_branch ?? "main")
-  const [appPort, setAppPort] = useState<number>(8080)
+  const [appPort, setAppPort] = useState<number>(80)
   const [environmentVars, setEnvironmentVars] = useState<
-    { key: string; value: string }[]
+    { key: string; value: string; showValue?: boolean }[]
   >([])
 
   const [nameAvailable, setNameAvailable] = useState<boolean | null>(null)
@@ -34,17 +48,21 @@ export default function Deploy() {
 
     const validateRepo = async () => {
       try {
-        const res = await api.get(`/apps/validate-repo?repoFullName=${encodeURIComponent(repo.full_name)}`)
+        const res = await api.get(
+          `/apps/validate-repo?repoFullName=${encodeURIComponent(repo.full_name)}`
+        )
         const data = res.data?.data
         if (data?.hasDockerFile) {
           setRepoValid(true)
         } else {
           setRepoValid(false)
-          toast.error("Repository validation failed. Ensure it has a Dockerfile.")
+          toast.error("Repository validation failed.")
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         setRepoValid(false)
-        const msg = err.response?.data?.message ?? "Failed to validate repository"
+        const axiosErr = err as { response?: { data?: { message?: string } } }
+        const msg =
+          axiosErr.response?.data?.message ?? "Failed to validate repository"
         toast.error(msg)
       } finally {
         setIsValidatingRepo(false)
@@ -54,33 +72,38 @@ export default function Deploy() {
     validateRepo()
   }, [repo, navigate])
 
+  // Real-time app name availability check
   useEffect(() => {
-    if (!name) {
-      setNameAvailable(null)
+    if (!name.trim()) {
       return
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsCheckingName(true)
     const controller = new AbortController()
 
     const timeoutId = setTimeout(async () => {
       try {
-        const res = await api.get(`/apps/check-name?name=${encodeURIComponent(name)}`, {
-          signal: controller.signal
-        })
+        const res = await api.get(
+          `/apps/check-name?name=${encodeURIComponent(name.trim())}`,
+          {
+            signal: controller.signal,
+          }
+        )
         const data = res.data?.data
         setNameAvailable(data?.available ?? false)
         if (data?.available === false) {
           toast.error("App name is already taken")
         }
-      } catch (err: any) {
-        if (err.name !== "CanceledError" && err.name !== "AbortError") {
+      } catch (err: unknown) {
+        const axiosErr = err as { name?: string }
+        if (axiosErr.name !== "CanceledError" && axiosErr.name !== "AbortError") {
           setNameAvailable(null)
         }
       } finally {
         setIsCheckingName(false)
       }
-    }, 500)
+    }, 450)
 
     return () => {
       clearTimeout(timeoutId)
@@ -89,12 +112,25 @@ export default function Deploy() {
   }, [name])
 
   const handleAddEnv = () => {
-    setEnvironmentVars([...environmentVars, { key: "", value: "" }])
+    setEnvironmentVars([
+      ...environmentVars,
+      { key: "", value: "", showValue: true },
+    ])
   }
 
-  const handleEnvChange = (index: number, field: "key" | "value", val: string) => {
+  const handleEnvChange = (
+    index: number,
+    field: "key" | "value",
+    val: string
+  ) => {
     const newVars = [...environmentVars]
     newVars[index][field] = val
+    setEnvironmentVars(newVars)
+  }
+
+  const toggleShowValue = (index: number) => {
+    const newVars = [...environmentVars]
+    newVars[index].showValue = !newVars[index].showValue
     setEnvironmentVars(newVars)
   }
 
@@ -111,22 +147,25 @@ export default function Deploy() {
     setIsSubmitting(true)
     try {
       const payload = {
-        name,
+        name: name.trim().toLowerCase(),
         repoFullName: repo?.full_name,
-        branch,
+        branch: branch.trim(),
         appPort,
-        environmentVars: environmentVars.filter((v) => v.key && v.value)
+        environmentVars: environmentVars
+          .filter((v) => v.key.trim() && v.value.trim())
+          .map((v) => ({ key: v.key.trim(), value: v.value.trim() })),
       }
       const res = await api.post("/apps/deploy", payload)
       const deploymentId = res.data?.data
       if (deploymentId) {
-        toast.success("Deployment triggered successfully")
+        toast.success("Deployment started")
         navigate(`/deployments/${deploymentId}`)
       } else {
-        toast.error("Failed to retrieve deployment ID")
+        toast.error("Failed to start deployment")
       }
-    } catch (err: any) {
-      const msg = err.response?.data?.message ?? "Failed to trigger deployment"
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } }
+      const msg = axiosErr.response?.data?.message ?? "Failed to start deployment"
       toast.error(msg)
     } finally {
       setIsSubmitting(false)
@@ -136,130 +175,233 @@ export default function Deploy() {
   if (!repo) return null
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white py-10 px-6">
-      <div className="max-w-2xl mx-auto">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="text-sm text-emerald-400 hover:text-emerald-300 mb-6 flex items-center gap-2"
+    <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] flex flex-col selection:bg-[var(--color-accent-blue)]/20">
+      <Header profile={null} />
+
+      <main className="flex-1 max-w-[1200px] w-full mx-auto px-4 md:px-8 py-10 space-y-8">
+        {/* Back navigation */}
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-2 text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
         >
-          &larr; Back to Dashboard
-        </button>
-        <h1 className="text-2xl font-light mb-2">Deploy Application</h1>
-        <p className="text-white/40 mb-8 text-sm">
-          Configure deployment settings for {repo.full_name}
-        </p>
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Back to Applications</span>
+        </Link>
 
-        {isValidatingRepo ? (
-          <div className="flex items-center gap-3 text-white/40 mb-8 p-4 rounded-xl border border-white/6 bg-white/2">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400/40 border-t-emerald-400" />
-            <span className="text-sm">Validating repository (checking for Dockerfile)...</span>
-          </div>
-        ) : repoValid === false ? (
-          <div className="mb-8 p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-sm text-red-400">
-            This repository cannot be deployed. Ensure it contains a valid Dockerfile in the root.
-          </div>
-        ) : null}
+        {/* Deploy Title */}
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-[-0.72px] text-[var(--color-text-primary)]">
+            Deploy Application
+          </h1>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Configure deployment settings for <span className="font-semibold text-[var(--color-text-primary)]">{repo.full_name}</span>.
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm text-white/80">App Name</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                placeholder="my-awesome-app"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
-                required
-              />
-              {isCheckingName && (
-                <div className="absolute right-3 top-3">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400/40 border-t-emerald-400" />
-                </div>
-              )}
-              {name && !isCheckingName && nameAvailable === true && (
-                <div className="absolute right-3 top-3 text-emerald-400 text-xs">Available</div>
-              )}
-              {name && !isCheckingName && nameAvailable === false && (
-                <div className="absolute right-3 top-3 text-red-400 text-xs">Taken</div>
+        {/* Selected Repository Summary Card */}
+        <div className="outlinr-card p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-md bg-[var(--color-bg-tertiary)] border border-[var(--color-border-subtle)] flex items-center justify-center text-[var(--color-text-primary)]">
+                <GithubIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[var(--color-text-primary)]">{repo.full_name}</p>
+                <p className="text-xs text-[var(--color-text-secondary)]">Default branch: {repo.default_branch}</p>
+              </div>
+            </div>
+
+            {/* Repository Status Badge */}
+            <div>
+              {isValidatingRepo ? (
+                <span className="badge-pill bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border-subtle)]">
+                  <Loader2 className="h-3 w-3 animate-spin text-[var(--color-accent-blue)]" />
+                  <span>Validating repository...</span>
+                </span>
+              ) : repoValid ? (
+                <span className="badge-pill bg-[rgba(23,201,100,0.1)] text-[var(--color-status-success-text)]">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Verified</span>
+                </span>
+              ) : (
+                <span className="badge-pill bg-[rgba(242,19,97,0.1)] text-[var(--color-status-error-text)]">
+                  <XCircle className="h-3.5 w-3.5" />
+                  <span>Validation Failed</span>
+                </span>
               )}
             </div>
           </div>
+        </div>
 
-          <div className="space-y-2">
-            <label className="text-sm text-white/80">Branch</label>
-            <input
-              type="text"
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
-              required
-            />
+        {/* Deployment Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="outlinr-card p-6 space-y-6">
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] border-b border-[var(--color-border-subtle)] pb-4">
+              Application Configuration
+            </h2>
+
+            {/* App Name Input */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-[var(--color-text-primary)] block">
+                App Name
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    const newVal = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")
+                    setName(newVal)
+                    if (!newVal) setNameAvailable(null)
+                  }}
+                  placeholder="my-app"
+                  className="w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border-default)] rounded-md px-3.5 py-2.5 text-sm text-[var(--color-text-primary)] focus-ring transition-colors pr-24"
+                  required
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs">
+                  {isCheckingName && (
+                    <Loader2 className="h-4 w-4 animate-spin text-[var(--color-accent-blue)]" />
+                  )}
+                  {name && !isCheckingName && nameAvailable === true && (
+                    <span className="text-[var(--color-status-success-text)] font-medium text-xs flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Available
+                    </span>
+                  )}
+                  {name && !isCheckingName && nameAvailable === false && (
+                    <span className="text-[var(--color-status-error-text)] font-medium text-xs flex items-center gap-1">
+                      <XCircle className="h-3.5 w-3.5" /> Taken
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Branch and Port Configuration */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[var(--color-text-primary)] flex items-center gap-1.5">
+                  <GitBranch className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" />
+                  <span>Branch</span>
+                </label>
+                <input
+                  type="text"
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  className="w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border-default)] rounded-md px-3.5 py-2 text-sm text-[var(--color-text-primary)] focus-ring"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-[var(--color-text-primary)] flex items-center gap-1.5">
+                  <Sliders className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" />
+                  <span>Port</span>
+                </label>
+                <input
+                  type="number"
+                  value={appPort}
+                  onChange={(e) => setAppPort(parseInt(e.target.value) || 8080)}
+                  className="w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border-default)] rounded-md px-3.5 py-2 text-sm text-[var(--color-text-primary)] focus-ring"
+                  required
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm text-white/80">App Port</label>
-            <input
-              type="number"
-              value={appPort}
-              onChange={(e) => setAppPort(parseInt(e.target.value))}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
-              required
-            />
-          </div>
+          {/* Environment Variables Section */}
+          <div className="outlinr-card p-6 space-y-6">
+            <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] pb-4">
+              <div>
+                <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                  Environment Variables
+                </h2>
+                <p className="text-xs text-[var(--color-text-secondary)]">
+                  Optional key-value configuration variables.
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <label className="text-sm text-white/80">Environment Variables</label>
               <button
                 type="button"
                 onClick={handleAddEnv}
-                className="text-xs text-emerald-400 hover:text-emerald-300"
+                className="btn-ghost text-xs py-1 px-3 flex items-center gap-1.5"
               >
-                + Add Variable
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add Variable</span>
               </button>
             </div>
-            {environmentVars.map((env, i) => (
-              <div key={i} className="flex gap-3 items-center">
-                <input
-                  type="text"
-                  placeholder="KEY"
-                  value={env.key}
-                  onChange={(e) => handleEnvChange(i, "key", e.target.value.toUpperCase())}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
-                />
-                <input
-                  type="text"
-                  placeholder="Value"
-                  value={env.value}
-                  onChange={(e) => handleEnvChange(i, "value", e.target.value)}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveEnv(i)}
-                  className="text-white/40 hover:text-red-400"
-                >
-                  &times;
-                </button>
+
+            {environmentVars.length === 0 ? (
+              <p className="text-xs text-[var(--color-text-secondary)] italic">No environment variables added.</p>
+            ) : (
+              <div className="space-y-3">
+                {environmentVars.map((env, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      placeholder="KEY"
+                      value={env.key}
+                      onChange={(e) =>
+                        handleEnvChange(i, "key", e.target.value.toUpperCase())
+                      }
+                      className="flex-1 bg-[var(--color-bg-secondary)] border border-[var(--color-border-default)] rounded-md px-3 py-2 text-xs font-mono text-[var(--color-text-primary)] focus-ring"
+                    />
+                    <div className="flex-1 relative">
+                      <input
+                        type={env.showValue ? "text" : "password"}
+                        placeholder="Value"
+                        value={env.value}
+                        onChange={(e) => handleEnvChange(i, "value", e.target.value)}
+                        className="w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border-default)] rounded-md px-3 py-2 text-xs font-mono text-[var(--color-text-primary)] focus-ring pr-9"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleShowValue(i)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                      >
+                        {env.showValue ? (
+                          <EyeOff className="h-3.5 w-3.5" />
+                        ) : (
+                          <Eye className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveEnv(i)}
+                      className="p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-status-error)] transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
 
+          {/* Submit Action Button */}
           <button
             type="submit"
-            disabled={!nameAvailable || !repoValid || isSubmitting || isCheckingName || isValidatingRepo}
-            className="w-full py-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors mt-8"
+            disabled={
+              !name ||
+              !nameAvailable ||
+              !repoValid ||
+              isSubmitting ||
+              isCheckingName ||
+              isValidatingRepo
+            }
+            className="w-full btn-primary py-3 text-sm font-medium flex items-center justify-center gap-2 focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Deploying..." : "Deploy Application"}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin text-black" />
+                <span>Deploying Application...</span>
+              </>
+            ) : (
+              <span>Deploy Application</span>
+            )}
           </button>
         </form>
-      </div>
-      
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-60 -right-60 h-125 w-125 rounded-full bg-emerald-500/4 blur-3xl" />
-        <div className="absolute -bottom-60 -left-60 h-125 w-125 rounded-full bg-emerald-500/2 blur-3xl" />
-      </div>
+      </main>
     </div>
   )
 }

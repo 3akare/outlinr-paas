@@ -30,6 +30,7 @@ public class DeploymentServiceImpl implements DeploymentService {
     private final DeploymentRepository deploymentRepository;
     private final EnvironmentVariableRepository environmentVariableRepository;
     private final AsyncDeploymentTask asyncDeploymentTask;
+    private final RuntimeService runtimeService;
 
     @Override
     public UUID deploy(DeployRequest deployRequest, UUID userId) {
@@ -118,5 +119,30 @@ public class DeploymentServiceImpl implements DeploymentService {
                 .createdAt(d.getCreatedAt())
                 .build())
             .toList();
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteDeployment(UUID deploymentId, UUID userId) {
+        Deployment deployment = deploymentRepository.findById(deploymentId)
+                .orElseThrow(() -> new RuntimeException("Deployment not found"));
+                
+        App app = deployment.getApp();
+        if (!app.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        UUID appId = app.getId();
+        log.info("Deleting deployment and app resources for deploymentId={}, appId={}", deploymentId, appId);
+
+        // Clean up Docker containers and Caddy routes
+        runtimeService.deleteAppResources(appId);
+
+        // Delete from DB (EnvironmentVars -> Deployments -> App)
+        environmentVariableRepository.deleteByAppId(appId);
+        deploymentRepository.deleteByAppId(appId);
+        appRepository.deleteById(appId);
+        
+        log.info("Successfully deleted app and associated resources for appId={}", appId);
     }
 }

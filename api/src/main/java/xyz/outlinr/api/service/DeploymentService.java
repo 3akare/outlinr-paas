@@ -11,4 +11,5 @@ public interface DeploymentService {
     RepoValidationResponse validateRepo(String repoFullName, UUID userId);
     DeploymentStatusResponse getDeploymentStatus(UUID deploymentId);
     List<DeploymentResponse> listDeployments(UUID userId);
+    void deleteDeployment(UUID deploymentId, UUID userId);
 }

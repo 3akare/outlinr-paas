@@ -62,5 +62,15 @@ public class DeployController {
         log.info("Inside DeployController.listDeployments. userId: {}", userId);
         return ResponseEntity.ok(DefaultApiResponse.success(deploymentService.listDeployments(userId)));
     }
+
+    @DeleteMapping("/{deploymentId}")
+    public ResponseEntity<DefaultApiResponse<?>> deleteDeployment(
+            @PathVariable UUID deploymentId,
+            @AuthenticationPrincipal UUID userId
+    ) {
+        log.info("Inside DeployController.deleteDeployment. deploymentId: {}, userId: {}", deploymentId, userId);
+        deploymentService.deleteDeployment(deploymentId, userId);
+        return ResponseEntity.ok(DefaultApiResponse.success(null));
+    }
  }
 

@@ -181,6 +181,23 @@ public class RuntimeService {
         log.info("Previous deployment {} marked as SUPERSEDED.", previousId);
     }
 
+    public void deleteAppResources(UUID appId) {
+        List<Deployment> deployments = deploymentRepository.findByAppId(appId);
+        for (Deployment deployment : deployments) {
+            caddyService.removeRoute(deployment.getId());
+            if (deployment.getContainerId() != null) {
+                try {
+                    dockerClient.stopContainerCmd(deployment.getContainerId()).withTimeout(10).exec();
+                    dockerClient.removeContainerCmd(deployment.getContainerId()).withRemoveVolumes(false).exec();
+                    log.info("Container stopped and removed for deploymentId={}. containerId={}", deployment.getId(), deployment.getContainerId());
+                } catch (Exception e) {
+                    log.warn("Could not stop/remove container {} during app deletion: {}", deployment.getContainerId(), e.getMessage());
+                }
+            }
+        }
+        log.info("App resources deleted for appId={}", appId);
+    }
+
     private void loadImageTar(Path imageTarPath) throws Exception {
         try (FileInputStream fis = new FileInputStream(imageTarPath.toFile())) {
             dockerClient.loadImageCmd(fis).exec();

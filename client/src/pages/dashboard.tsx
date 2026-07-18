@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState, useMemo } from "react"
-import { useNavigate } from "react-router"
-import { useClearAuth } from "@/store/auth_store"
+import { useNavigate, useSearchParams } from "react-router"
 import { api } from "@/api/axios"
 import type { UserProfile, Repo, Deployment } from "@/api/types"
+import Header from "@/components/Header"
+import { GithubIcon } from "@/components/GithubIcon"
+import {
+  Search,
+  ExternalLink,
+  Plus,
+  AlertCircle,
+  Loader2,
+  XCircle,
+  GitBranch,
+  Terminal
+} from "lucide-react"
 
 function formatRelativeTime(dateString: string) {
   try {
@@ -24,8 +35,8 @@ function formatRelativeTime(dateString: string) {
 }
 
 export default function Dashboard() {
-  const clearAuth = useClearAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [deployments, setDeployments] = useState<Deployment[]>([])
@@ -35,7 +46,8 @@ export default function Dashboard() {
   const [reposLoading, setReposLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [activeTab, setActiveTab] = useState<"deployments" | "repos">("deployments")
+  const initialTab = searchParams.get("tab") === "repos" ? "repos" : "deployments"
+  const [activeTab, setActiveTab] = useState<"deployments" | "repos">(initialTab)
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
   const itemsPerPage = 8
@@ -98,24 +110,30 @@ export default function Dashboard() {
     bootstrap()
   }, [])
 
-  // Auto-polling deployments when there are active/building ones
+  // Auto-polling active/building deployments
   useEffect(() => {
     const hasActiveBuilds = deployments.some(
       (d) =>
         d.status === "STARTED" ||
+        d.status === "QUEUED" ||
         d.status === "BUILDING" ||
         d.status === "STARTING"
     )
     if (!hasActiveBuilds) return
 
-    const interval = setInterval(fetchDeployments, 4000)
+    const interval = setInterval(fetchDeployments, 3500)
     return () => clearInterval(interval)
   }, [deployments])
 
-  // Reset page to 1 on search change to avoid empty pages
-  useEffect(() => {
-    setPage(1)
-  }, [search])
+  const filteredDeployments = useMemo(() => {
+    return deployments.filter((d) => {
+      return (
+        !search.trim() ||
+        d.appName.toLowerCase().includes(search.toLowerCase()) ||
+        d.repoFullName.toLowerCase().includes(search.toLowerCase())
+      )
+    })
+  }, [deployments, search])
 
   const filteredRepos = useMemo(() => {
     if (!search.trim()) return repos
@@ -133,299 +151,271 @@ export default function Dashboard() {
 
   const hasMoreRepos = filteredRepos.length > paginatedRepos.length
 
-  const handleLogout = async () => {
-    try {
-      await api.post("/auth/logout")
-    } finally {
-      clearAuth()
-      navigate("/login", { replace: true })
-    }
-  }
-
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f]">
-        <div className="flex items-center gap-3 text-white/40">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400/40 border-t-emerald-400" />
-          <span className="text-sm">Loading Outlinr...</span>
+      <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-[var(--color-text-secondary)] text-sm">
+          <Loader2 className="h-4 w-4 animate-spin text-[var(--color-accent-blue)]" />
+          <span>Loading Outlinr...</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <header className="border-b border-white/6 px-6 py-4">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md border border-emerald-500/30 bg-emerald-500/20">
-              <div className="h-2 w-2 rounded-sm bg-emerald-400" />
-            </div>
-            <span className="text-sm font-semibold tracking-wide">Outlinr</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {profile && (
-              <div className="flex items-center gap-2">
-                {profile.avatarUrl && (
-                  <img
-                    src={profile.avatarUrl}
-                    alt="avatar"
-                    className="h-6 w-6 rounded-full border border-white/10"
-                  />
-                )}
-                <span className="text-sm text-white/50">
-                  {profile.name ?? profile.email}
-                </span>
-              </div>
-            )}
-            <button
-              onClick={handleLogout}
-              className="text-sm text-white/40 transition-colors hover:text-white/85"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] flex flex-col selection:bg-[var(--color-accent-blue)]/20">
+      <Header profile={profile} />
 
-      <main className="mx-auto max-w-5xl px-6 py-10">
+      <main className="flex-1 max-w-[1200px] w-full mx-auto px-4 md:px-8 py-10 space-y-8">
+        {/* Error Notification */}
         {error && (
-          <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
-            {error}
+          <div className="p-4 rounded-lg bg-[rgba(242,19,97,0.1)] border border-[rgba(242,19,97,0.2)] flex items-center justify-between text-sm text-[var(--color-status-error-text)]">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-xs font-medium hover:underline"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Page Title & Navigation Tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-[var(--color-border-subtle)]">
           <div>
-            <h1 className="mb-1 text-2xl font-light tracking-tight text-white">
-              PaaS Dashboard
+            <h1 className="text-3xl font-bold tracking-[-0.72px] text-[var(--color-text-primary)]">
+              Applications
             </h1>
-            <p className="text-sm text-white/40">
-              Manage your deployments and applications locally
+            <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+              Manage and deploy your web applications with Outlinr.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {profile?.hasGithubInstallation && (
-              <a
-                href={`https://github.com/apps/${import.meta.env.VITE_GITHUB_APP_NAME}/installations/new`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/3 px-3 py-2 text-xs font-medium text-white/70 transition-colors hover:bg-white/8"
-              >
-                Configure GitHub Access
-              </a>
-            )}
+
+          <div className="flex items-center gap-2 border-b border-[var(--color-border-subtle)] pb-1 sm:pb-0 sm:border-none">
+            <button
+              onClick={() => {
+                setActiveTab("deployments")
+                setSearchParams({})
+              }}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === "deployments"
+                  ? "text-[var(--color-text-primary)] border-b-2 border-[var(--color-text-primary)]"
+                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+              }`}
+            >
+              All Applications ({deployments.length})
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("repos")
+                setSearchParams({ tab: "repos" })
+              }}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === "repos"
+                  ? "text-[var(--color-text-primary)] border-b-2 border-[var(--color-text-primary)]"
+                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+              }`}
+            >
+              Deploy New App
+            </button>
           </div>
         </div>
 
-        {/* Tab Controls */}
-        <div className="mb-8 border-b border-white/6 flex items-center gap-6">
-          <button
-            onClick={() => setActiveTab("deployments")}
-            className={`pb-3 text-sm font-medium transition-all relative ${
-              activeTab === "deployments"
-                ? "text-emerald-400"
-                : "text-white/40 hover:text-white/80"
-            }`}
-          >
-            Deployments
-            {deployments.length > 0 && (
-              <span className="ml-1.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-400 font-semibold">
-                {deployments.length}
-              </span>
-            )}
-            {activeTab === "deployments" && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("repos")}
-            className={`pb-3 text-sm font-medium transition-all relative ${
-              activeTab === "repos"
-                ? "text-emerald-400"
-                : "text-white/40 hover:text-white/80"
-            }`}
-          >
-            Deploy New Service
-            {activeTab === "repos" && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400" />
-            )}
-          </button>
+        {/* Search Input & Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-text-secondary)]" />
+            <input
+              type="text"
+              placeholder={
+                activeTab === "deployments"
+                  ? "Search applications..."
+                  : "Search GitHub repositories..."
+              }
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
+              className="w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border-default)] rounded-md pl-10 pr-4 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)] focus-ring transition-colors"
+            />
+          </div>
+
+          {activeTab === "repos" && profile?.hasGithubInstallation && (
+            <a
+              href={`https://github.com/apps/${import.meta.env.VITE_GITHUB_APP_NAME}/installations/new`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary py-2 px-4 text-xs shrink-0 inline-flex items-center gap-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+            >
+              <GithubIcon className="h-3.5 w-3.5" />
+              <span>Adjust GitHub Access</span>
+            </a>
+          )}
         </div>
 
-        {/* Tab Content: Deployments */}
+        {/* Tab 1: Deployed Apps Grid */}
         {activeTab === "deployments" && (
           <div>
             {deploymentsLoading && deployments.length === 0 ? (
-              <div className="flex items-center gap-3 py-10 text-white/40">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400/40 border-t-emerald-400" />
-                <span className="text-sm">Loading active deployments...</span>
+              <div className="flex items-center justify-center py-20 text-[var(--color-text-secondary)]">
+                <Loader2 className="h-5 w-5 animate-spin text-[var(--color-accent-blue)] mr-3" />
+                <span className="text-sm">Loading applications...</span>
               </div>
-            ) : deployments.length === 0 ? (
-              <div className="rounded-2xl border border-white/6 bg-white/2 p-12 text-center max-w-lg mx-auto mt-6">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                  </svg>
-                </div>
-                <h3 className="mb-1 text-base font-medium text-white/90">
-                  No services deployed
+            ) : filteredDeployments.length === 0 ? (
+              <div className="p-12 outlinr-card text-center max-w-lg mx-auto my-8 space-y-4">
+                <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                  {search ? `No apps matching "${search}"` : "No applications deployed yet"}
                 </h3>
-                <p className="mb-6 text-xs text-white/40 leading-relaxed">
-                  Connect your GitHub repositories, configure environment variables, and launch your containerized services instantly on port 80.
+                <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
+                  Select a repository to deploy your web application.
                 </p>
                 <button
-                  onClick={() => setActiveTab("repos")}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-400 px-4 py-2 text-xs font-semibold text-gray-950 transition-all hover:bg-emerald-300 active:scale-[0.98]"
+                  onClick={() => {
+                    setActiveTab("repos")
+                    setSearchParams({ tab: "repos" })
+                  }}
+                  className="btn-primary text-xs inline-flex items-center gap-2"
                 >
-                  Deploy your first app
+                  <Plus className="h-4 w-4" />
+                  <span>Deploy your first app</span>
                 </button>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {deployments.map((deployment) => {
-                  const isActive = deployment.status === "ACTIVE"
+              <div className="grid md:grid-cols-2 gap-5">
+                {filteredDeployments.map((d) => {
+                  const isActive = d.status === "ACTIVE"
                   const isBuilding =
-                    deployment.status === "STARTED" ||
-                    deployment.status === "BUILDING" ||
-                    deployment.status === "STARTING"
-                  const isFailed = deployment.status === "FAILED"
+                    d.status === "STARTED" ||
+                    d.status === "QUEUED" ||
+                    d.status === "BUILDING" ||
+                    d.status === "STARTING"
+                  const isFailed = d.status === "FAILED"
 
                   return (
                     <div
-                      key={deployment.id}
-                      className="group flex flex-col justify-between rounded-2xl border border-white/6 bg-white/2 p-5 transition-all duration-200 hover:border-white/12 hover:bg-white/4"
+                      key={d.id}
+                      className="outlinr-card flex flex-col justify-between"
                     >
-                      <div>
-                        {/* Title and Badge */}
-                        <div className="mb-3 flex items-start justify-between gap-3">
-                          <div className="min-w-0">
+                      <div className="space-y-4">
+                        {/* Title & Status Tag */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1 min-w-0">
                             {isActive ? (
                               <a
-                                href={`http://${deployment.appName}.localhost`}
+                                href={`http://${d.appName}.localhost`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="truncate text-base font-medium text-white hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"
+                                className="text-base font-semibold text-[var(--color-text-primary)] hover:text-[var(--color-accent-blue)] transition-colors flex items-center gap-1.5 truncate"
                               >
-                                {deployment.appName}
-                                <svg
-                                  width="12"
-                                  height="12"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                  className="text-white/20 group-hover:text-emerald-400/60"
-                                >
-                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m4-3h6v6m-11 5L21 3" />
-                                </svg>
+                                <span>{d.appName}</span>
+                                <ExternalLink className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" />
                               </a>
                             ) : (
-                              <span className="truncate text-base font-medium text-white/90">
-                                {deployment.appName}
+                              <span className="text-base font-semibold text-[var(--color-text-primary)] truncate block">
+                                {d.appName}
                               </span>
                             )}
-                            <p className="mt-0.5 text-xs text-white/30 truncate">
-                              {deployment.repoFullName}
-                            </p>
+                            <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)] truncate">
+                              <GithubIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-tertiary)]" />
+                              <span className="truncate">{d.repoFullName}</span>
+                            </div>
                           </div>
 
-                          {/* Dynamic Status Badge */}
+                          {/* Status Badge */}
                           <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold border ${
+                            className={`badge-pill shrink-0 ${
                               isActive
-                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                ? "bg-[rgba(23,201,100,0.1)] text-[var(--color-status-success-text)]"
                                 : isBuilding
-                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                                : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                                ? "bg-[rgba(245,166,35,0.15)] text-[var(--color-status-warning-text)]"
+                                : isFailed
+                                ? "bg-[rgba(242,19,97,0.1)] text-[var(--color-status-error-text)]"
+                                : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border-subtle)]"
                             }`}
                           >
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                isActive
-                                  ? "bg-emerald-400 animate-pulse"
-                                  : isBuilding
-                                  ? "bg-amber-400 animate-spin border border-t-transparent rounded-full border-amber-400/40"
-                                  : "bg-rose-400"
-                              }`}
-                            />
-                            {deployment.status}
+                            {isActive && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-status-success)]" />
+                            )}
+                            {isBuilding && (
+                              <Loader2 className="h-3 w-3 animate-spin text-[var(--color-status-warning)]" />
+                            )}
+                            {isFailed && <XCircle className="h-3 w-3 text-[var(--color-status-error)]" />}
+                            <span>{d.status}</span>
                           </span>
                         </div>
 
-                        {/* Metadata grid */}
-                        <div className="mt-4 grid grid-cols-2 gap-y-2 text-xs text-white/40">
+                        {/* Details */}
+                        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[var(--color-border-subtle)] text-xs text-[var(--color-text-secondary)]">
                           <div>
-                            <span className="text-[10px] text-white/20 block uppercase tracking-wider">
-                              Branch / Port
+                            <span className="text-[11px] text-[var(--color-text-tertiary)] block">
+                              Branch
                             </span>
-                            <span className="text-white/70 font-medium">
-                              {deployment.branch} · {deployment.appPort}
+                            <span className="text-[var(--color-text-primary)] font-medium">
+                              {d.branch}
                             </span>
                           </div>
+
                           <div>
-                            <span className="text-[10px] text-white/20 block uppercase tracking-wider">
+                            <span className="text-[11px] text-[var(--color-text-tertiary)] block">
                               Deployed
                             </span>
-                            <span className="text-white/70 font-medium">
-                              {formatRelativeTime(deployment.createdAt)}
+                            <span className="text-[var(--color-text-primary)] font-medium" style={{ fontVariantNumeric: "tabular-nums" }}>
+                              {formatRelativeTime(d.createdAt)}
                             </span>
                           </div>
-                          {deployment.commitSha && (
-                            <div className="col-span-2 mt-1">
-                              <span className="text-[10px] text-white/20 block uppercase tracking-wider">
-                                Commit hash
-                              </span>
-                              <code className="text-white/60 font-mono text-[10px]">
-                                {deployment.commitSha.substring(0, 7)}
-                              </code>
-                            </div>
-                          )}
                         </div>
 
-                        {/* Failed error preview */}
-                        {isFailed && deployment.errorMessage && (
-                          <div className="mt-3 rounded-lg border border-red-500/10 bg-red-500/5 p-2.5 text-xs text-red-400/90 leading-relaxed font-mono whitespace-pre-wrap max-h-16 overflow-y-auto">
-                            {deployment.errorMessage}
+                        {/* Error snippet if failed */}
+                        {isFailed && d.errorMessage && (
+                          <div className="p-3 rounded-md bg-[rgba(242,19,97,0.06)] border border-[rgba(242,19,97,0.2)] text-xs text-[var(--color-status-error-text)] font-mono leading-relaxed overflow-x-auto max-h-20">
+                            {d.errorMessage}
                           </div>
                         )}
                       </div>
 
                       {/* Action buttons */}
-                      <div className="mt-5 border-t border-white/4 pt-3.5 flex items-center justify-between gap-3">
-                        <button
-                          onClick={() =>
-                            navigate(`/deployments/${deployment.id}`)
-                          }
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-white/40 hover:text-white/80 transition-colors"
-                        >
-                          <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
+                      <div className="pt-4 border-t border-[var(--color-border-subtle)] mt-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => navigate(`/deployments/${d.id}`)}
+                            className="text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:underline flex items-center gap-1.5 transition-colors"
                           >
-                            <rect x="2" y="3" width="20" height="14" rx="2" />
-                            <path d="M6 21h12M12 17v4" />
-                          </svg>
-                          Console Log
-                        </button>
+                            <Terminal className="h-3.5 w-3.5" />
+                            <span>View Logs</span>
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (window.confirm(`Are you sure you want to delete ${d.appName}? This will remove all associated resources and cannot be undone.`)) {
+                                try {
+                                  await api.delete(`/apps/${d.id}`)
+                                  setDeployments(prev => prev.filter(dep => dep.id !== d.id))
+                                } catch (err) {
+                                  console.error("Failed to delete deployment", err)
+                                  alert("Failed to delete deployment")
+                                }
+                              }
+                            }}
+                            className="text-xs font-medium text-[var(--color-status-error)] hover:text-[var(--color-status-error-text)] hover:underline flex items-center gap-1.5 transition-colors ml-3"
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
 
                         {isActive && (
                           <a
-                            href={`http://${deployment.appName}.localhost`}
+                            href={`http://${d.appName}.localhost`}
                             target="_blank"
                             rel="noreferrer"
-                            className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition-all hover:bg-emerald-500/20 active:scale-[0.97]"
+                            className="btn-ghost text-xs py-1 px-3 inline-flex items-center gap-1.5"
                           >
-                            Launch Service
+                            <span>Launch App</span>
+                            <ExternalLink className="h-3 w-3" />
                           </a>
                         )}
                       </div>
@@ -437,162 +427,92 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Tab Content: Repositories (Deploy New Service) */}
+        {/* Tab 2: Repositories (Deploy New App) */}
         {activeTab === "repos" && (
-          <div>
-            {!profile?.hasGithubInstallation && (
-              <div className="rounded-2xl border border-white/6 bg-white/2 p-10 text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-white/6 bg-white/3 text-white/40">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
-                  </svg>
+          <div className="space-y-6">
+            {!profile?.hasGithubInstallation ? (
+              <div className="p-10 outlinr-card text-center max-w-lg mx-auto space-y-4">
+                <div className="h-12 w-12 rounded-lg bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border-subtle)] flex items-center justify-center mx-auto">
+                  <GithubIcon className="h-6 w-6" />
                 </div>
-                <p className="mb-1 text-sm font-medium text-white/70">
-                  No GitHub App Installed
-                </p>
-                <p className="mb-6 text-xs text-white/30 max-w-sm mx-auto leading-relaxed">
-                  Install the Outlinr local GitHub App to grant permission to clone, build, and deploy your repositories.
+                <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                  Connect GitHub Repositories
+                </h3>
+                <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
+                  Install Outlinr GitHub app to select and deploy your applications.
                 </p>
                 <a
                   href={`https://github.com/apps/${import.meta.env.VITE_GITHUB_APP_NAME}/installations/new`}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-400 px-4 py-2 text-xs font-semibold text-gray-950 transition-all hover:bg-emerald-300 active:scale-[0.98]"
+                  className="btn-primary text-xs inline-flex items-center gap-2"
                 >
-                  Install GitHub App
+                  <GithubIcon className="h-4 w-4" />
+                  <span>Connect GitHub</span>
                 </a>
               </div>
-            )}
-
-            {profile?.hasGithubInstallation && reposLoading && (
-              <div className="flex items-center gap-3 py-10 text-white/40">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400/40 border-t-emerald-400" />
-                <span className="text-sm">Loading GitHub repositories...</span>
+            ) : reposLoading && repos.length === 0 ? (
+              <div className="flex items-center justify-center py-20 text-[var(--color-text-secondary)]">
+                <Loader2 className="h-5 w-5 animate-spin text-[var(--color-accent-blue)] mr-3" />
+                <span className="text-sm">Fetching repositories from GitHub...</span>
               </div>
-            )}
-
-            {profile?.hasGithubInstallation &&
-              !reposLoading &&
-              repos.length === 0 && (
-                <div className="rounded-2xl border border-white/6 bg-white/2 p-10 text-center">
-                  <p className="text-sm text-white/40">
-                    No repositories found in connected GitHub installations.
-                  </p>
-                </div>
-              )}
-
-            {profile?.hasGithubInstallation &&
-              !reposLoading &&
-              repos.length > 0 && (
-                <div className="space-y-4">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search repositories..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="w-full bg-white/3 border border-white/6 rounded-xl px-4 py-3 pl-10 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-colors"
-                    />
-                    <svg
-                      className="absolute left-3.5 top-3.5 text-white/30"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
+            ) : filteredRepos.length === 0 ? (
+              <div className="p-10 outlinr-card text-center max-w-lg mx-auto space-y-2">
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  {search ? `No repositories match "${search}"` : "No repositories found."}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid gap-3">
+                  {paginatedRepos.map((r) => (
+                    <div
+                      key={r.id}
+                      className="outlinr-card p-4 flex items-center justify-between gap-4"
                     >
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="m21 21-4.3-4.3" />
-                    </svg>
-                  </div>
-
-                  {filteredRepos.length === 0 ? (
-                    <div className="rounded-2xl border border-white/6 bg-white/2 p-10 text-center">
-                      <p className="text-sm text-white/40">
-                        No repositories match "{search}"
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-2.5">
-                      {paginatedRepos.map((repo) => (
-                        <div
-                          key={repo.id}
-                          className="group flex items-center justify-between rounded-xl border border-white/6 bg-white/2 px-5 py-4 transition-all duration-150 hover:border-white/12 hover:bg-white/4"
-                        >
-                          <div className="flex min-w-0 items-center gap-4">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/8 bg-white/4">
-                              <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                className="text-white/40"
-                              >
-                                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
-                              </svg>
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-white/90">
-                                {repo.full_name}
-                              </p>
-                              <div className="mt-0.5 flex items-center gap-2">
-                                <span className="text-xs text-white/30">
-                                  {repo.default_branch}
-                                </span>
-                                <span className="text-white/10">·</span>
-                                <span
-                                  className={`text-xs ${
-                                    repo.private
-                                      ? "text-amber-400/60"
-                                      : "text-emerald-400/60"
-                                  }`}
-                                >
-                                  {repo.private ? "Private" : "Public"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() =>
-                              navigate("/deploy", { state: { repo } })
-                            }
-                            className="ml-4 shrink-0 rounded-lg border border-white/6 px-3.5 py-1.5 text-xs font-semibold text-white/50 transition-all duration-150 group-hover:border-white/15 group-hover:text-white/90 hover:bg-white/4 active:scale-[0.97]"
-                          >
-                            Deploy
-                          </button>
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="h-10 w-10 rounded-md bg-[var(--color-bg-tertiary)] border border-[var(--color-border-subtle)] flex items-center justify-center shrink-0 text-[var(--color-text-primary)]">
+                          <GithubIcon className="h-5 w-5" />
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        <div className="min-w-0 space-y-0.5">
+                          <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
+                            {r.full_name}
+                          </p>
+                          <div className="flex items-center gap-3 text-xs text-[var(--color-text-secondary)]">
+                            <span className="flex items-center gap-1">
+                              <GitBranch className="h-3 w-3" />
+                              {r.default_branch}
+                            </span>
+                            <span>·</span>
+                            <span>{r.private ? "Private" : "Public"}</span>
+                          </div>
+                        </div>
+                      </div>
 
-                  {hasMoreRepos && (
-                    <div className="flex justify-center pt-4">
                       <button
-                        onClick={() => setPage((p) => p + 1)}
-                        className="rounded-lg border border-white/8 bg-white/2 px-4 py-2 text-xs font-medium text-white/60 hover:bg-white/4 hover:text-white/80 transition-colors"
+                        onClick={() => navigate("/deploy", { state: { repo: r } })}
+                        className="btn-primary text-xs shrink-0 inline-flex items-center gap-1.5"
                       >
-                        Load More Repositories
+                        <span>Deploy</span>
+                        <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                  )}
+                  ))}
                 </div>
-              )}
+
+                {hasMoreRepos && (
+                  <div className="flex justify-center pt-4">
+                    <button
+                      onClick={() => setPage((p) => p + 1)}
+                      className="btn-ghost text-xs"
+                    >
+                      Load More Repositories
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>
-
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-60 -right-60 h-125 w-125 rounded-full bg-emerald-500/4 blur-3xl" />
-        <div className="absolute -bottom-60 -left-60 h-125 w-125 rounded-full bg-emerald-500/2 blur-3xl" />
-      </div>
     </div>
   )
 }
